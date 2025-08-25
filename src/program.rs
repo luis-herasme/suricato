@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation, console};
+use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
 use crate::{attributes::Attribute, uniforms::Uniform};
 
