@@ -1,12 +1,13 @@
 use std::collections::HashMap;
 use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
-use crate::uniforms::Uniform;
+use crate::{attributes::Attributes, uniforms::Uniform};
 
 pub struct Program {
     gl: WebGl2RenderingContext,
     webgl_program: WebGlProgram,
     uniform_locations: HashMap<String, WebGlUniformLocation>,
+    attribute_locations: HashMap<String, u32>,
 }
 
 impl Program {
@@ -27,11 +28,13 @@ impl Program {
 
         if program_link_status_is_ok {
             let uniform_locations = Program::get_uniform_locations(&gl, &webgl_program);
+            let attribute_locations = Program::get_attribute_locations(&gl, &webgl_program);
 
             Ok(Program {
                 gl,
                 webgl_program,
                 uniform_locations,
+                attribute_locations,
             })
         } else {
             Err(gl
@@ -61,6 +64,16 @@ impl Program {
         }
     }
 
+    /// UNIFORMS
+    pub fn set_uniform(&self, uniform_name: &str, unifrom: Uniform) {
+        let location = self.uniform_locations.get(uniform_name).unwrap();
+
+        match unifrom {
+            Uniform::Float(v) => self.gl.uniform1f(Some(location), v),
+            Uniform::FloatVec2(v1, v2) => self.gl.uniform2f(Some(location), v1, v2),
+        }
+    }
+
     fn get_uniform_locations(gl: &WebGl2RenderingContext, program: &WebGlProgram) -> HashMap<String, WebGlUniformLocation> {
         let mut uniform_locations = HashMap::new();
 
@@ -82,12 +95,32 @@ impl Program {
         uniform_locations
     }
 
-    pub fn set_uniform(&self, uniform_name: &str, unifrom: Uniform) {
-        let location = self.uniform_locations.get(uniform_name).unwrap();
+    /// ATTRIBUTES
+    pub fn set_attribute(&self, attribute_name: &str, attribute: Attributes) {
+        let location = self.attribute_locations.get(attribute_name).unwrap();
 
-        match unifrom {
-            Uniform::Float(v) => self.gl.uniform1f(Some(location), v),
-            Uniform::FloatVec2(v1, v2) => self.gl.uniform2f(Some(location), v1, v2),
+        match attribute {
+            Attributes::Float(v) => self.gl.vertex_attrib1f(*location, v),
+            Attributes::FloatVec2(v1, v2) => self.gl.vertex_attrib2f(*location, v1, v2),
         }
+    }
+
+    fn get_attribute_locations(gl: &WebGl2RenderingContext, program: &WebGlProgram) -> HashMap<String, u32> {
+        let mut attribute_locations = HashMap::new();
+
+        let number_of_attributes = gl
+            .get_program_parameter(&program, WebGl2RenderingContext::ACTIVE_ATTRIBUTES)
+            .as_f64()
+            .expect("Unable to get the number of attributes");
+
+        for i in 0..number_of_attributes as u32 {
+            let attribute = gl.get_active_attrib(program, i).unwrap();
+            let attribute_name = attribute.name();
+
+            let index = gl.get_attrib_location(program, &attribute_name);
+            attribute_locations.insert(attribute_name, index as u32);
+        }
+
+        attribute_locations
     }
 }
