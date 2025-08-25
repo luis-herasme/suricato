@@ -1,4 +1,6 @@
 pub enum Uniform {
     Float(f32),
-    FloatVec2(f32, f32),
+    Vec2(f32, f32),
+    Vec3(f32, f32, f32),
+    Vec4(f32, f32, f32, f32),
 }
