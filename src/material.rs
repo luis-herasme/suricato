@@ -6,19 +6,19 @@ use crate::{
     uniforms::Uniform,
 };
 
-pub struct Program {
+pub struct Material {
     gl:                  WebGl2RenderingContext,
-    pub webgl_program:   WebGlProgram,
+    pub program:         WebGlProgram,
     uniform_locations:   HashMap<String, WebGlUniformLocation>,
     attribute_locations: HashMap<String, u32>,
 }
 
-impl Program {
-    pub fn new(gl: &WebGl2RenderingContext, vertex_shader_source: &str, fragment_shader_source: &str) -> Result<Program, String> {
+impl Material {
+    pub fn new(gl: &WebGl2RenderingContext, vertex_shader_source: &str, fragment_shader_source: &str) -> Result<Material, String> {
         let webgl_program = gl.create_program().ok_or_else(|| String::from("Could not create program"))?;
 
-        let vertex_shader = Program::compile_shader(&gl, vertex_shader_source, WebGl2RenderingContext::VERTEX_SHADER)?;
-        let fragment_shader = Program::compile_shader(&gl, fragment_shader_source, WebGl2RenderingContext::FRAGMENT_SHADER)?;
+        let vertex_shader = Material::compile_shader(&gl, vertex_shader_source, WebGl2RenderingContext::VERTEX_SHADER)?;
+        let fragment_shader = Material::compile_shader(&gl, fragment_shader_source, WebGl2RenderingContext::FRAGMENT_SHADER)?;
 
         gl.attach_shader(&webgl_program, &vertex_shader);
         gl.attach_shader(&webgl_program, &fragment_shader);
@@ -30,12 +30,12 @@ impl Program {
             .unwrap_or(false);
 
         if program_link_status_is_ok {
-            let uniform_locations = Program::get_uniform_locations(&gl, &webgl_program);
-            let attribute_locations = Program::get_attribute_locations(&gl, &webgl_program);
+            let uniform_locations = Material::get_uniform_locations(&gl, &webgl_program);
+            let attribute_locations = Material::get_attribute_locations(&gl, &webgl_program);
 
-            Ok(Program {
+            Ok(Material {
                 gl: gl.clone(),
-                webgl_program,
+                program: webgl_program,
                 uniform_locations,
                 attribute_locations,
             })

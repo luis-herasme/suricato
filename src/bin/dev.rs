@@ -1,4 +1,4 @@
-use suricato::{attributes::AttributeBuffer, index_buffer::IndexBuffer, program::Program, uniforms::Uniform};
+use suricato::{attributes::AttributeBuffer, index_buffer::IndexBuffer, material::Material, uniforms::Uniform};
 use web_sys::wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext};
 
@@ -39,15 +39,15 @@ void main() {
 }
 "#;
 
-    let program = Program::new(&gl, vertex_shader_source, fragment_shader_source).unwrap();
-    gl.use_program(Some(&program.webgl_program));
+    let material = Material::new(&gl, vertex_shader_source, fragment_shader_source).unwrap();
+    gl.use_program(Some(&material.program));
 
     // Uniforms
-    program.set_uniform("color", &Uniform::Vec4(0.0, 0.0, 1.0, 1.0));
+    material.set_uniform("color", &Uniform::Vec4(0.0, 0.0, 1.0, 1.0));
 
     // Attributes
     #[rustfmt::skip]
-    program.set_attribute(
+    material.set_attribute(
         "position",
         &AttributeBuffer::vec2(
             &gl,
@@ -68,7 +68,6 @@ void main() {
         ],
     );
 
-    // index_buffer.draw(&gl);
     gl.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&index_buffer.buffer));
     gl.draw_elements_with_i32(
         WebGl2RenderingContext::TRIANGLES,
