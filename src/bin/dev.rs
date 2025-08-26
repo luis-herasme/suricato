@@ -1,4 +1,8 @@
-use suricato::{attributes::AttributeBuffer, program::Program, uniforms::Uniform};
+use suricato::{
+    attributes::{AttributeData, InterleavedAttributeBuffer},
+    program::Program,
+    uniforms::Uniform,
+};
 use web_sys::wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext};
 
@@ -46,8 +50,22 @@ void main() {
     program.set_uniform("color", &Uniform::Vec4(0.0, 0.0, 1.0, 1.0));
 
     // Attributes
-    program.set_attribute("position", &AttributeBuffer::vec2(&gl, vec![0.0, 0.0, 0.5, 0.0]));
-    program.set_attribute("size", &AttributeBuffer::float(&gl, vec![10.0, 50.0]));
+    // program.set_attribute("position", &AttributeBuffer::vec2(&gl, vec![0.0, 0.0, 0.5, 0.0]));
+    // program.set_attribute("size", &AttributeBuffer::float(&gl, vec![10.0, 50.0]));
+
+    program.set_attributes(&InterleavedAttributeBuffer::new(
+        &gl,
+        vec![
+            AttributeData::Vec2 {
+                name: String::from("position"),
+                data: vec![(0.0, 0.0), (0.5, 0.0)],
+            },
+            AttributeData::Float {
+                name: String::from("size"),
+                data: vec![10.0, 50.0],
+            },
+        ],
+    ));
 
     gl.draw_arrays(WebGl2RenderingContext::POINTS, 0, 2);
 }

@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
-use crate::{attributes::AttributeBuffer, uniforms::Uniform};
+use crate::{
+    attributes::{AttributeBuffer, InterleavedAttributeBuffer},
+    uniforms::Uniform,
+};
 
 pub struct Program {
     gl:                  WebGl2RenderingContext,
@@ -101,12 +104,28 @@ impl Program {
         self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&attribute.buffer));
         self.gl.vertex_attrib_pointer_with_i32(
             *location,
-            attribute.description.number_of_components,
-            attribute.description.type_of_the_components as u32,
-            attribute.description.normalize,
-            0,
-            0,
+            attribute.number_of_components,
+            attribute.type_of_the_components as u32,
+            attribute.normalize,
+            attribute.stride,
+            attribute.offset,
         )
+    }
+
+    pub fn set_attributes(&self, attributes: &InterleavedAttributeBuffer) {
+        self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&attributes.buffer));
+
+        for attribute in &attributes.description {
+            let location = self.attribute_locations.get(&attribute.name).unwrap();
+            self.gl.vertex_attrib_pointer_with_i32(
+                *location,
+                attribute.number_of_components,
+                attribute.type_of_the_components as u32,
+                attribute.normalize,
+                attribute.stride,
+                attribute.offset,
+            )
+        }
     }
 
     fn get_attribute_locations(gl: &WebGl2RenderingContext, program: &WebGlProgram) -> HashMap<String, u32> {
