@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
-use crate::{attributes::Attribute, uniforms::Uniform};
+use crate::{attributes::AttributeBuffer, uniforms::Uniform};
 
 pub struct Program {
     gl:                  WebGl2RenderingContext,
@@ -96,11 +96,17 @@ impl Program {
     }
 
     /// ATTRIBUTES
-    pub fn set_attribute(&self, name: &str, attribute: &Attribute) {
+    pub fn set_attribute(&self, name: &str, attribute: &AttributeBuffer) {
         let location = self.attribute_locations.get(name).unwrap();
         self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&attribute.buffer));
-        self.gl
-            .vertex_attrib_pointer_with_i32(*location, attribute.size, attribute.kind as u32, attribute.normalize, 0, 0)
+        self.gl.vertex_attrib_pointer_with_i32(
+            *location,
+            attribute.description.number_of_components,
+            attribute.description.type_of_the_components as u32,
+            attribute.description.normalize,
+            0,
+            0,
+        )
     }
 
     fn get_attribute_locations(gl: &WebGl2RenderingContext, program: &WebGlProgram) -> HashMap<String, u32> {
