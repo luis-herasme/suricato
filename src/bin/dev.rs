@@ -1,8 +1,4 @@
-use suricato::{
-    attributes::{AttributeData, InterleavedAttributeBuffer},
-    program::Program,
-    uniforms::Uniform,
-};
+use suricato::{attributes::AttributeBuffer, index_buffer::IndexBuffer, program::Program, uniforms::Uniform};
 use web_sys::wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext};
 
@@ -25,10 +21,10 @@ fn main() {
 
     let vertex_shader_source = r#"#version 300 es
 in vec2 position;
-in float size;
+// in float size;
 
 void main() {
-    gl_PointSize = size;
+    // gl_PointSize = size;
     gl_Position = vec4(position, 0.0, 1.0);
 }
 "#;
@@ -50,22 +46,51 @@ void main() {
     program.set_uniform("color", &Uniform::Vec4(0.0, 0.0, 1.0, 1.0));
 
     // Attributes
-    // program.set_attribute("position", &AttributeBuffer::vec2(&gl, vec![0.0, 0.0, 0.5, 0.0]));
-    // program.set_attribute("size", &AttributeBuffer::float(&gl, vec![10.0, 50.0]));
+    #[rustfmt::skip]
+    program.set_attribute(
+        "position",
+        &AttributeBuffer::vec2(
+            &gl,
+            vec![
+                0.5,   0.5, // Top right
+                0.5,  -0.5, // Bottom right
+                -0.5, -0.5, // Bottom left
+                -0.5,  0.5, // Top left
+            ],
+        ),
+    );
 
-    program.set_attributes(&InterleavedAttributeBuffer::new(
+    let index_buffer = IndexBuffer::u8(
         &gl,
         vec![
-            AttributeData::Vec2 {
-                name: String::from("position"),
-                data: vec![(0.0, 0.0), (0.5, 0.0)],
-            },
-            AttributeData::Float {
-                name: String::from("size"),
-                data: vec![10.0, 50.0],
-            },
+            0, 1, 2, // Triangle #1
+            2, 3, 0, // Triangle #2
         ],
-    ));
+    );
 
-    gl.draw_arrays(WebGl2RenderingContext::POINTS, 0, 2);
+    // index_buffer.draw(&gl);
+    gl.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&index_buffer.buffer));
+    gl.draw_elements_with_i32(
+        WebGl2RenderingContext::TRIANGLES,
+        index_buffer.count as i32,
+        index_buffer.kind,
+        index_buffer.offset,
+    );
+
+    // program.set_attribute("size", &AttributeBuffer::float(&gl, vec![10.0, 50.0]));
+    // program.set_attributes(&InterleavedAttributeBuffer::new(
+    //     &gl,
+    //     vec![
+    //         AttributeData::Vec2 {
+    //             name: String::from("position"),
+    //             data: vec![(0.0, 0.0), (0.5, 0.0)],
+    //         },
+    //         AttributeData::Float {
+    //             name: String::from("size"),
+    //             data: vec![10.0, 50.0],
+    //         },
+    //     ],
+    // ));
+
+    // gl.draw_arrays(WebGl2RenderingContext::POINTS, 0, 2);
 }
