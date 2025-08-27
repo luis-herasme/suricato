@@ -61,11 +61,11 @@ impl Renderer {
         }
 
         // Set attributes
-        for attribute in &geometry_resource.attributes {
+        for attribute in &geometry_resource.attribute_buffers {
             material_resource.set_attribute_buffer(attribute);
         }
 
-        if let Some(indices) = &geometry_resource.indices {
+        if let Some(indices) = &geometry_resource.index_buffer {
             self.gl.bind_buffer(
                 WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
                 Some(&indices.buffer)
@@ -80,7 +80,7 @@ impl Renderer {
             self.gl.draw_arrays(
                 WebGl2RenderingContext::TRIANGLES,
                 0,
-                0
+                geometry_resource.vertex_count
             );
         }
     }

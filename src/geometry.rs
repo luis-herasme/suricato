@@ -41,14 +41,14 @@ impl Geometry {
 }
 
 pub struct GeometryResource {
-    pub vertex_count: u32,
-    pub attributes:   Vec<AttributeBuffer>,
-    pub indices:      Option<IndexBuffer>,
+    pub vertex_count:      i32,
+    pub index_buffer:      Option<IndexBuffer>,
+    pub attribute_buffers: Vec<AttributeBuffer>,
 }
 
 impl GeometryResource {
     pub fn new(gl: &WebGl2RenderingContext, geometry: &Geometry) -> GeometryResource {
-        let mut attributes = Vec::new();
+        let mut attribute_buffers = Vec::new();
 
         for attribute in &geometry.attributes {
             let buffer = match attribute {
@@ -56,15 +56,21 @@ impl GeometryResource {
                 Attribute::Interleaved(attributes) => InterleavedAttributeBuffer::new(gl, attributes),
             };
 
-            attributes.push(buffer);
+            attribute_buffers.push(buffer);
         }
 
-        let indices = geometry.indices.as_ref().map(|indices| IndexBuffer::from_index_data(gl, indices));
+        let index_buffer = geometry.indices.as_ref().map(|indices| IndexBuffer::from_index_data(gl, indices));
+
+        let vertex_count = if let Some(attribute) = geometry.attributes.get(0) {
+            attribute.vertex_count() as i32
+        } else {
+            0
+        };
 
         GeometryResource {
-            vertex_count: geometry.attributes.get(0).unwrap().vertex_count() as u32,
-            indices,
-            attributes,
+            vertex_count,
+            index_buffer,
+            attribute_buffers,
         }
     }
 }
