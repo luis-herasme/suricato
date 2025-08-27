@@ -99,9 +99,10 @@ impl MaterialResource {
 
         match uniform {
             Uniform::Float(v) => self.gl.uniform1f(Some(location), *v),
-            Uniform::Vec2(v1, v2) => self.gl.uniform2f(Some(location), *v1, *v2),
-            Uniform::Vec3(v1, v2, v3) => self.gl.uniform3f(Some(location), *v1, *v2, *v3),
-            Uniform::Vec4(v1, v2, v3, v4) => self.gl.uniform4f(Some(location), *v1, *v2, *v3, *v4),
+            Uniform::Vec2(v) => self.gl.uniform2fv_with_f32_array(Some(location), v),
+            Uniform::Vec3(v) => self.gl.uniform3fv_with_f32_array(Some(location), v),
+            Uniform::Vec4(v) => self.gl.uniform4fv_with_f32_array(Some(location), v),
+            Uniform::Mat4(v) => self.gl.uniform_matrix4fv_with_f32_array(Some(location), false, v),
         }
     }
 

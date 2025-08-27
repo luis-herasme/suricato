@@ -22,6 +22,8 @@ impl Renderer {
         let document = web_sys::window().unwrap().document().unwrap();
         let canvas = document.create_element("canvas").unwrap().dyn_into::<HtmlCanvasElement>().unwrap();
         document.body().unwrap().append_child(&canvas).unwrap();
+        canvas.set_width(800);
+        canvas.set_height(800);
 
         let gl = canvas
             .get_context("webgl2")
