@@ -8,25 +8,25 @@ use web_sys::{
 #[repr(u32)]
 #[derive(Debug, Clone, Copy)]
 pub enum ComponentType {
-    // Byte          = 0x1400,
-    // UnsignedByte  = 0x1401,
-    // Short         = 0x1402,
-    // UnsignedShort = 0x1403,
-    // Int           = 0x1404,
-    // UnsignedInt   = 0x1405,
-    Float = 0x1406,
+    Byte          = 0x1400,
+    UnsignedByte  = 0x1401,
+    Short         = 0x1402,
+    UnsignedShort = 0x1403,
+    Int           = 0x1404,
+    UnsignedInt   = 0x1405,
+    Float         = 0x1406,
 }
 
 impl ComponentType {
     // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Types
     fn number_of_bytes(&self) -> u8 {
         match &self {
-            // ComponentType::Byte => 1,
-            // ComponentType::UnsignedByte => 1,
-            // ComponentType::Short => 2,
-            // ComponentType::UnsignedShort => 2,
-            // ComponentType::Int => 4,
-            // ComponentType::UnsignedInt => 4,
+            ComponentType::Byte => 1,
+            ComponentType::UnsignedByte => 1,
+            ComponentType::Short => 2,
+            ComponentType::UnsignedShort => 2,
+            ComponentType::Int => 4,
+            ComponentType::UnsignedInt => 4,
             ComponentType::Float => 4,
         }
     }
