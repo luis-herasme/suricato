@@ -15,7 +15,15 @@ pub struct IndexBuffer {
 }
 
 impl IndexBuffer {
-    pub fn u8(gl: &WebGl2RenderingContext, data: Vec<u8>) -> IndexBuffer {
+    pub fn from_index_data(gl: &WebGl2RenderingContext, index_data: &IndexData) -> IndexBuffer {
+        match index_data {
+            IndexData::UnsignedByte(data) => IndexBuffer::u8(gl, data),
+            IndexData::UnsignedShort(data) => IndexBuffer::u16(gl, data),
+            IndexData::UnsignedInt(data) => IndexBuffer::u32(gl, data),
+        }
+    }
+
+    pub fn u8(gl: &WebGl2RenderingContext, data: &Vec<u8>) -> IndexBuffer {
         let buffer = gl.create_buffer().unwrap();
         gl.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&buffer));
 
@@ -39,7 +47,7 @@ impl IndexBuffer {
         }
     }
 
-    pub fn u16(gl: &WebGl2RenderingContext, data: Vec<u16>) -> IndexBuffer {
+    pub fn u16(gl: &WebGl2RenderingContext, data: &Vec<u16>) -> IndexBuffer {
         let buffer = gl.create_buffer().unwrap();
         gl.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&buffer));
 
@@ -63,7 +71,7 @@ impl IndexBuffer {
         }
     }
 
-    pub fn u32(gl: &WebGl2RenderingContext, data: Vec<u32>) -> IndexBuffer {
+    pub fn u32(gl: &WebGl2RenderingContext, data: &Vec<u32>) -> IndexBuffer {
         let buffer = gl.create_buffer().unwrap();
         gl.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&buffer));
 

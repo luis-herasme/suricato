@@ -3,22 +3,46 @@ use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLoc
 
 use crate::{
     attributes::{AttributeBuffer, InterleavedAttributeBuffer},
+    generate_id::generate_id,
     uniforms::Uniform,
 };
 
 pub struct Material {
+    pub id:                 u64,
+    pub uniforms:           HashMap<String, Uniform>,
+    vertex_shader_source:   String,
+    fragment_shader_source: String,
+}
+
+impl Material {
+    pub fn new(vertex_shader_source: &str, fragment_shader_source: &str) -> Material {
+        Material {
+            id:                     generate_id(),
+            vertex_shader_source:   String::from(vertex_shader_source),
+            fragment_shader_source: String::from(fragment_shader_source),
+            uniforms:               HashMap::new(),
+        }
+    }
+
+    pub fn set_uniform(&mut self, uniform_name: &str, uniform: Uniform) {
+        self.uniforms.insert(String::from(uniform_name), uniform);
+    }
+}
+
+pub struct MaterialResource {
     gl:                  WebGl2RenderingContext,
-    pub program:         WebGlProgram,
+    program:             WebGlProgram,
     uniform_locations:   HashMap<String, WebGlUniformLocation>,
     attribute_locations: HashMap<String, u32>,
 }
 
-impl Material {
-    pub fn new(gl: &WebGl2RenderingContext, vertex_shader_source: &str, fragment_shader_source: &str) -> Result<Material, String> {
+impl MaterialResource {
+    pub fn new(gl: &WebGl2RenderingContext, material: &Material) -> Result<MaterialResource, String> {
         let webgl_program = gl.create_program().ok_or_else(|| String::from("Could not create program"))?;
 
-        let vertex_shader = Material::compile_shader(&gl, vertex_shader_source, WebGl2RenderingContext::VERTEX_SHADER)?;
-        let fragment_shader = Material::compile_shader(&gl, fragment_shader_source, WebGl2RenderingContext::FRAGMENT_SHADER)?;
+        let vertex_shader = MaterialResource::compile_shader(&gl, &material.vertex_shader_source, WebGl2RenderingContext::VERTEX_SHADER)?;
+        let fragment_shader =
+            MaterialResource::compile_shader(&gl, &material.fragment_shader_source, WebGl2RenderingContext::FRAGMENT_SHADER)?;
 
         gl.attach_shader(&webgl_program, &vertex_shader);
         gl.attach_shader(&webgl_program, &fragment_shader);
@@ -30,10 +54,10 @@ impl Material {
             .unwrap_or(false);
 
         if program_link_status_is_ok {
-            let uniform_locations = Material::get_uniform_locations(&gl, &webgl_program);
-            let attribute_locations = Material::get_attribute_locations(&gl, &webgl_program);
+            let uniform_locations = MaterialResource::get_uniform_locations(&gl, &webgl_program);
+            let attribute_locations = MaterialResource::get_attribute_locations(&gl, &webgl_program);
 
-            Ok(Material {
+            Ok(MaterialResource {
                 gl: gl.clone(),
                 program: webgl_program,
                 uniform_locations,
@@ -65,11 +89,15 @@ impl Material {
         }
     }
 
+    pub fn use_program(&self) {
+        self.gl.use_program(Some(&self.program));
+    }
+
     /// UNIFORMS
-    pub fn set_uniform(&self, uniform_name: &str, unifrom: &Uniform) {
+    pub fn set_uniform(&self, uniform_name: &str, uniform: &Uniform) {
         let location = self.uniform_locations.get(uniform_name).unwrap();
 
-        match unifrom {
+        match uniform {
             Uniform::Float(v) => self.gl.uniform1f(Some(location), *v),
             Uniform::Vec2(v1, v2) => self.gl.uniform2f(Some(location), *v1, *v2),
             Uniform::Vec3(v1, v2, v3) => self.gl.uniform3f(Some(location), *v1, *v2, *v3),
@@ -99,8 +127,9 @@ impl Material {
     }
 
     /// ATTRIBUTES
-    pub fn set_attribute(&self, name: &str, attribute: &AttributeBuffer) {
-        let location = self.attribute_locations.get(name).unwrap();
+    pub fn set_attribute(&self, attribute: &AttributeBuffer) {
+        let location = self.attribute_locations.get(&attribute.name).unwrap();
+        self.gl.enable_vertex_attrib_array(*location);
         self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&attribute.buffer));
         self.gl.vertex_attrib_pointer_with_i32(
             *location,
@@ -117,6 +146,7 @@ impl Material {
 
         for attribute in &attributes.description {
             let location = self.attribute_locations.get(&attribute.name).unwrap();
+            self.gl.enable_vertex_attrib_array(*location);
             self.gl.vertex_attrib_pointer_with_i32(
                 *location,
                 attribute.number_of_components,
@@ -141,7 +171,6 @@ impl Material {
             let attribute_name = attribute.name();
 
             let location = gl.get_attrib_location(program, &attribute_name) as u32;
-            gl.enable_vertex_attrib_array(location);
             attribute_locations.insert(attribute_name, location);
         }
 

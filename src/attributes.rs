@@ -33,6 +33,7 @@ impl ComponentType {
 }
 
 pub struct AttributeBuffer {
+    pub name:                   String,
     pub buffer:                 WebGlBuffer,
     pub number_of_components:   i32,
     pub type_of_the_components: ComponentType,
@@ -42,24 +43,57 @@ pub struct AttributeBuffer {
 }
 
 impl AttributeBuffer {
-    pub fn float(gl: &WebGl2RenderingContext, data: Vec<f32>) -> AttributeBuffer {
-        AttributeBuffer::float_attribute_generator(gl, data, 1)
+    pub fn from_attribute_data(gl: &WebGl2RenderingContext, data: &AttributeData) -> AttributeBuffer {
+        match data {
+            AttributeData::Float { name, data } => AttributeBuffer::float(gl, name.clone(), data),
+            AttributeData::Vec2 { name, data } => AttributeBuffer::vec2(gl, name.clone(), data),
+            AttributeData::Vec3 { name, data } => AttributeBuffer::vec3(gl, name.clone(), data),
+            AttributeData::Vec4 { name, data } => AttributeBuffer::vec4(gl, name.clone(), data),
+        }
     }
 
-    pub fn vec2(gl: &WebGl2RenderingContext, data: Vec<f32>) -> AttributeBuffer {
-        AttributeBuffer::float_attribute_generator(gl, data, 2)
+    pub fn float(gl: &WebGl2RenderingContext, name: String, data: &Vec<f32>) -> AttributeBuffer {
+        AttributeBuffer::float_attribute_generator(gl, name, data, 1)
     }
 
-    pub fn vec3(gl: &WebGl2RenderingContext, data: Vec<f32>) -> AttributeBuffer {
-        AttributeBuffer::float_attribute_generator(gl, data, 3)
+    pub fn vec2(gl: &WebGl2RenderingContext, name: String, data: &Vec<(f32, f32)>) -> AttributeBuffer {
+        let mut values = Vec::with_capacity(data.len() * 2);
+
+        for (a, b) in data {
+            values.push(*a);
+            values.push(*b);
+        }
+
+        AttributeBuffer::float_attribute_generator(gl, name, &values, 2)
     }
 
-    pub fn vec4(gl: &WebGl2RenderingContext, data: Vec<f32>) -> AttributeBuffer {
-        AttributeBuffer::float_attribute_generator(gl, data, 4)
+    pub fn vec3(gl: &WebGl2RenderingContext, name: String, data: &Vec<(f32, f32, f32)>) -> AttributeBuffer {
+        let mut values = Vec::with_capacity(data.len() * 3);
+
+        for (a, b, c) in data {
+            values.push(*a);
+            values.push(*b);
+            values.push(*c);
+        }
+
+        AttributeBuffer::float_attribute_generator(gl, name, &values, 3)
+    }
+
+    pub fn vec4(gl: &WebGl2RenderingContext, name: String, data: &Vec<(f32, f32, f32, f32)>) -> AttributeBuffer {
+        let mut values = Vec::with_capacity(data.len() * 4);
+
+        for (a, b, c, d) in data {
+            values.push(*a);
+            values.push(*b);
+            values.push(*c);
+            values.push(*d);
+        }
+
+        AttributeBuffer::float_attribute_generator(gl, name, &values, 4)
     }
 
     #[inline]
-    fn float_attribute_generator(gl: &WebGl2RenderingContext, data: Vec<f32>, number_of_components: i32) -> AttributeBuffer {
+    fn float_attribute_generator(gl: &WebGl2RenderingContext, name: String, data: &Vec<f32>, number_of_components: i32) -> AttributeBuffer {
         let buffer = gl.create_buffer().unwrap();
         gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
 
@@ -69,6 +103,7 @@ impl AttributeBuffer {
         }
 
         AttributeBuffer {
+            name,
             buffer,
             number_of_components,
             type_of_the_components: ComponentType::Float,
@@ -87,6 +122,15 @@ pub enum AttributeData {
 }
 
 impl AttributeData {
+    pub fn number_of_elements(&self) -> usize {
+        match &self {
+            AttributeData::Float { data, .. } => data.len(),
+            AttributeData::Vec2 { data, .. } => data.len(),
+            AttributeData::Vec3 { data, .. } => data.len(),
+            AttributeData::Vec4 { data, .. } => data.len(),
+        }
+    }
+
     fn number_of_components(&self) -> u8 {
         match &self {
             AttributeData::Float { .. } => 1,
@@ -107,15 +151,6 @@ impl AttributeData {
 
     fn element_size_in_bytes(&self) -> u8 {
         self.number_of_components() * self.component_type().number_of_bytes()
-    }
-
-    fn number_of_elements(&self) -> usize {
-        match &self {
-            AttributeData::Float { data, .. } => data.len(),
-            AttributeData::Vec2 { data, .. } => data.len(),
-            AttributeData::Vec3 { data, .. } => data.len(),
-            AttributeData::Vec4 { data, .. } => data.len(),
-        }
     }
 
     fn name(&self) -> String {
