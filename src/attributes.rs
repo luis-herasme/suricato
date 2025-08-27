@@ -29,38 +29,42 @@ impl AttributeComponentType {
     }
 }
 
-pub enum AttributeBuffer {
-    Single(SingleAttributeBuffer),
-    Interleaved(InterleavedAttributeBuffer),
+pub struct AttributeLayout {
+    pub name:            String,
+    pub component_count: i32,
+    pub component_type:  AttributeComponentType,
+    pub normalize:       bool,
+    pub stride:          i32,
+    pub offset:          i32,
 }
 
-pub struct SingleAttributeBuffer {
-    pub name:                   String,
-    pub buffer:                 WebGlBuffer,
-    pub number_of_components:   i32,
-    pub type_of_the_components: AttributeComponentType,
-    pub normalize:              bool,
-    pub stride:                 i32,
-    pub offset:                 i32,
+pub enum VertexBuffer {
+    SingleAttribute(SingleAttributeVertexBuffer),
+    InterleavedAttributes(InterleavedAttributesVertexBuffer),
 }
 
-impl SingleAttributeBuffer {
-    pub fn new(gl: &WebGl2RenderingContext, data: &AttributeData) -> AttributeBuffer {
+pub struct SingleAttributeVertexBuffer {
+    pub buffer: WebGlBuffer,
+    pub layout: AttributeLayout,
+}
+
+impl SingleAttributeVertexBuffer {
+    pub fn new(gl: &WebGl2RenderingContext, data: &AttributeData) -> VertexBuffer {
         let buffer = match data {
-            AttributeData::Float { name, data } => SingleAttributeBuffer::float(gl, name.clone(), data),
-            AttributeData::Vec2 { name, data } => SingleAttributeBuffer::vec2(gl, name.clone(), data),
-            AttributeData::Vec3 { name, data } => SingleAttributeBuffer::vec3(gl, name.clone(), data),
-            AttributeData::Vec4 { name, data } => SingleAttributeBuffer::vec4(gl, name.clone(), data),
+            AttributeData::Float { name, data } => SingleAttributeVertexBuffer::float(gl, name.clone(), data),
+            AttributeData::Vec2 { name, data } => SingleAttributeVertexBuffer::vec2(gl, name.clone(), data),
+            AttributeData::Vec3 { name, data } => SingleAttributeVertexBuffer::vec3(gl, name.clone(), data),
+            AttributeData::Vec4 { name, data } => SingleAttributeVertexBuffer::vec4(gl, name.clone(), data),
         };
 
-        AttributeBuffer::Single(buffer)
+        VertexBuffer::SingleAttribute(buffer)
     }
 
-    pub fn float(gl: &WebGl2RenderingContext, name: String, data: &Vec<f32>) -> SingleAttributeBuffer {
-        SingleAttributeBuffer::float_attribute_generator(gl, name, data, 1)
+    pub fn float(gl: &WebGl2RenderingContext, name: String, data: &Vec<f32>) -> SingleAttributeVertexBuffer {
+        SingleAttributeVertexBuffer::create_float_buffer(gl, name, data, 1)
     }
 
-    pub fn vec2(gl: &WebGl2RenderingContext, name: String, data: &Vec<(f32, f32)>) -> SingleAttributeBuffer {
+    pub fn vec2(gl: &WebGl2RenderingContext, name: String, data: &Vec<(f32, f32)>) -> SingleAttributeVertexBuffer {
         let mut values = Vec::with_capacity(data.len() * 2);
 
         for (a, b) in data {
@@ -68,10 +72,10 @@ impl SingleAttributeBuffer {
             values.push(*b);
         }
 
-        SingleAttributeBuffer::float_attribute_generator(gl, name, &values, 2)
+        SingleAttributeVertexBuffer::create_float_buffer(gl, name, &values, 2)
     }
 
-    pub fn vec3(gl: &WebGl2RenderingContext, name: String, data: &Vec<(f32, f32, f32)>) -> SingleAttributeBuffer {
+    pub fn vec3(gl: &WebGl2RenderingContext, name: String, data: &Vec<(f32, f32, f32)>) -> SingleAttributeVertexBuffer {
         let mut values = Vec::with_capacity(data.len() * 3);
 
         for (a, b, c) in data {
@@ -80,10 +84,10 @@ impl SingleAttributeBuffer {
             values.push(*c);
         }
 
-        SingleAttributeBuffer::float_attribute_generator(gl, name, &values, 3)
+        SingleAttributeVertexBuffer::create_float_buffer(gl, name, &values, 3)
     }
 
-    pub fn vec4(gl: &WebGl2RenderingContext, name: String, data: &Vec<(f32, f32, f32, f32)>) -> SingleAttributeBuffer {
+    pub fn vec4(gl: &WebGl2RenderingContext, name: String, data: &Vec<(f32, f32, f32, f32)>) -> SingleAttributeVertexBuffer {
         let mut values = Vec::with_capacity(data.len() * 4);
 
         for (a, b, c, d) in data {
@@ -93,16 +97,16 @@ impl SingleAttributeBuffer {
             values.push(*d);
         }
 
-        SingleAttributeBuffer::float_attribute_generator(gl, name, &values, 4)
+        SingleAttributeVertexBuffer::create_float_buffer(gl, name, &values, 4)
     }
 
     #[inline]
-    fn float_attribute_generator(
+    fn create_float_buffer(
         gl: &WebGl2RenderingContext,
         name: String,
         data: &Vec<f32>,
         number_of_components: i32,
-    ) -> SingleAttributeBuffer {
+    ) -> SingleAttributeVertexBuffer {
         let buffer = gl.create_buffer().unwrap();
         gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
 
@@ -111,28 +115,30 @@ impl SingleAttributeBuffer {
             gl.buffer_data_with_array_buffer_view(WebGl2RenderingContext::ARRAY_BUFFER, &data, WebGl2RenderingContext::STATIC_DRAW);
         }
 
-        SingleAttributeBuffer {
-            name,
+        SingleAttributeVertexBuffer {
             buffer,
-            number_of_components,
-            type_of_the_components: AttributeComponentType::Float,
-            normalize: false,
-            stride: 0,
-            offset: 0,
+            layout: AttributeLayout {
+                name,
+                component_count: number_of_components,
+                component_type: AttributeComponentType::Float,
+                normalize: false,
+                stride: 0,
+                offset: 0,
+            },
         }
     }
 }
 
-pub enum Attribute {
-    Single(AttributeData),
-    Interleaved(Vec<AttributeData>),
+pub enum VertexData {
+    SingleAttribute(AttributeData),
+    InterleavedAttributes(Vec<AttributeData>),
 }
 
-impl Attribute {
+impl VertexData {
     pub fn vertex_count(&self) -> usize {
         match &self {
-            Attribute::Single(attribute_data) => attribute_data.vertex_count(),
-            Attribute::Interleaved(attribute_data_vector) => {
+            VertexData::SingleAttribute(attribute_data) => attribute_data.vertex_count(),
+            VertexData::InterleavedAttributes(attribute_data_vector) => {
                 for attribute_data in attribute_data_vector {
                     return attribute_data.vertex_count();
                 }
@@ -192,24 +198,14 @@ impl AttributeData {
     }
 }
 
-pub struct InterleavedAttributeBuffer {
-    pub buffer:      WebGlBuffer,
-    pub description: Vec<AttributeDescription>,
+pub struct InterleavedAttributesVertexBuffer {
+    pub buffer: WebGlBuffer,
+    pub layout: Vec<AttributeLayout>,
 }
 
-#[derive(Debug)]
-pub struct AttributeDescription {
-    pub name:                   String,
-    pub number_of_components:   i32,
-    pub type_of_the_components: AttributeComponentType,
-    pub normalize:              bool,
-    pub stride:                 i32,
-    pub offset:                 i32,
-}
-
-impl InterleavedAttributeBuffer {
-    pub fn new(gl: &WebGl2RenderingContext, attributes_data: &Vec<AttributeData>) -> AttributeBuffer {
-        let attribute_descriptions = InterleavedAttributeBuffer::convert_attribute_data_to_description(&attributes_data);
+impl InterleavedAttributesVertexBuffer {
+    pub fn new(gl: &WebGl2RenderingContext, attributes_data: &Vec<AttributeData>) -> VertexBuffer {
+        let attribute_descriptions = InterleavedAttributesVertexBuffer::convert_attribute_data_to_description(&attributes_data);
 
         let attribute_data = attributes_data.get(0).unwrap();
         let attribute_description = attribute_descriptions.get(0).unwrap();
@@ -261,24 +257,24 @@ impl InterleavedAttributeBuffer {
             WebGl2RenderingContext::STATIC_DRAW,
         );
 
-        AttributeBuffer::Interleaved(InterleavedAttributeBuffer {
+        VertexBuffer::InterleavedAttributes(InterleavedAttributesVertexBuffer {
             buffer,
-            description: attribute_descriptions,
+            layout: attribute_descriptions,
         })
     }
 
-    fn convert_attribute_data_to_description(attributes: &Vec<AttributeData>) -> Vec<AttributeDescription> {
+    fn convert_attribute_data_to_description(attributes: &Vec<AttributeData>) -> Vec<AttributeLayout> {
         let mut attribute_descriptions = Vec::new();
         let mut offset = 0;
 
         for attribute in attributes {
-            let attribute_description = AttributeDescription {
-                name:                   attribute.name(),
-                number_of_components:   attribute.number_of_components() as i32,
-                type_of_the_components: attribute.component_type(),
-                normalize:              false,
-                offset:                 offset,
-                stride:                 0, // Will be populated after the loop
+            let attribute_description = AttributeLayout {
+                name:            attribute.name(),
+                component_count: attribute.number_of_components() as i32,
+                component_type:  attribute.component_type(),
+                normalize:       false,
+                offset:          offset,
+                stride:          0, // Will be populated after the loop
             };
 
             offset += attribute.element_size_in_bytes() as i32;

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
 use crate::{
-    attributes::{AttributeBuffer, InterleavedAttributeBuffer, SingleAttributeBuffer},
+    attributes::{VertexBuffer, InterleavedAttributesVertexBuffer, SingleAttributeVertexBuffer},
     generate_id::generate_id,
     uniforms::Uniform,
 };
@@ -128,37 +128,37 @@ impl MaterialResource {
     }
 
     /// ATTRIBUTES
-    pub fn set_attribute_buffer(&self, attribute_buffer: &AttributeBuffer) {
+    pub fn set_attribute_buffer(&self, attribute_buffer: &VertexBuffer) {
         match attribute_buffer {
-            AttributeBuffer::Single(attribute_buffer) => self.set_single_attribute_buffer(attribute_buffer),
-            AttributeBuffer::Interleaved(attribute_buffer) => self.set_interleaved_attribute_buffer(attribute_buffer),
+            VertexBuffer::SingleAttribute(attribute_buffer) => self.set_single_attribute_buffer(attribute_buffer),
+            VertexBuffer::InterleavedAttributes(attribute_buffer) => self.set_interleaved_attribute_buffer(attribute_buffer),
         }
     }
 
-    fn set_single_attribute_buffer(&self, attribute: &SingleAttributeBuffer) {
-        let location = self.attribute_locations.get(&attribute.name).unwrap();
+    fn set_single_attribute_buffer(&self, attribute: &SingleAttributeVertexBuffer) {
+        let location = self.attribute_locations.get(&attribute.layout.name).unwrap();
         self.gl.enable_vertex_attrib_array(*location);
         self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&attribute.buffer));
         self.gl.vertex_attrib_pointer_with_i32(
             *location,
-            attribute.number_of_components,
-            attribute.type_of_the_components as u32,
-            attribute.normalize,
-            attribute.stride,
-            attribute.offset,
+            attribute.layout.component_count,
+            attribute.layout.component_type as u32,
+            attribute.layout.normalize,
+            attribute.layout.stride,
+            attribute.layout.offset,
         )
     }
 
-    fn set_interleaved_attribute_buffer(&self, attributes: &InterleavedAttributeBuffer) {
+    fn set_interleaved_attribute_buffer(&self, attributes: &InterleavedAttributesVertexBuffer) {
         self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&attributes.buffer));
 
-        for attribute in &attributes.description {
+        for attribute in &attributes.layout {
             let location = self.attribute_locations.get(&attribute.name).unwrap();
             self.gl.enable_vertex_attrib_array(*location);
             self.gl.vertex_attrib_pointer_with_i32(
                 *location,
-                attribute.number_of_components,
-                attribute.type_of_the_components as u32,
+                attribute.component_count,
+                attribute.component_type as u32,
                 attribute.normalize,
                 attribute.stride,
                 attribute.offset,

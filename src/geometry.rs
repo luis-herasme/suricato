@@ -1,15 +1,15 @@
 use web_sys::WebGl2RenderingContext;
 
 use crate::{
-    attributes::{Attribute, AttributeBuffer, AttributeData, InterleavedAttributeBuffer, SingleAttributeBuffer},
+    attributes::{AttributeData, InterleavedAttributesVertexBuffer, SingleAttributeVertexBuffer, VertexBuffer, VertexData},
     generate_id::generate_id,
     index_buffer::{IndexBuffer, IndexData},
 };
 
 pub struct Geometry {
-    pub id:         u64,
-    pub attributes: Vec<Attribute>,
-    pub indices:    Option<IndexData>,
+    pub id:          u64,
+    pub indices:     Option<IndexData>,
+    pub vertex_data: Vec<VertexData>,
 }
 
 impl Geometry {
@@ -17,8 +17,8 @@ impl Geometry {
     pub fn quad() -> Geometry {
         Geometry {
             id: generate_id(),
-            attributes: vec![
-                Attribute::Single(
+            vertex_data: vec![
+                VertexData::SingleAttribute(
                     AttributeData::Vec2 {
                         name: String::from("position"),
                         data: vec![
@@ -31,7 +31,7 @@ impl Geometry {
                 )
             ],
             indices: Some(
-                IndexData::UnsignedInt(vec![
+                IndexData::UnsignedByte(vec![
                     0, 1, 2, // Triangle #1
                     2, 3, 0, // Triangle #2
                 ])
@@ -41,27 +41,27 @@ impl Geometry {
 }
 
 pub struct GeometryResource {
-    pub vertex_count:      i32,
-    pub index_buffer:      Option<IndexBuffer>,
-    pub attribute_buffers: Vec<AttributeBuffer>,
+    pub vertex_count:   i32,
+    pub index_buffer:   Option<IndexBuffer>,
+    pub vertex_buffers: Vec<VertexBuffer>,
 }
 
 impl GeometryResource {
     pub fn new(gl: &WebGl2RenderingContext, geometry: &Geometry) -> GeometryResource {
-        let mut attribute_buffers = Vec::new();
+        let mut vertex_buffers = Vec::new();
 
-        for attribute in &geometry.attributes {
-            let buffer = match attribute {
-                Attribute::Single(attribute) => SingleAttributeBuffer::new(gl, attribute),
-                Attribute::Interleaved(attributes) => InterleavedAttributeBuffer::new(gl, attributes),
+        for vertex_data in &geometry.vertex_data {
+            let buffer = match vertex_data {
+                VertexData::SingleAttribute(vertex_data) => SingleAttributeVertexBuffer::new(gl, vertex_data),
+                VertexData::InterleavedAttributes(vertex_data_array) => InterleavedAttributesVertexBuffer::new(gl, vertex_data_array),
             };
 
-            attribute_buffers.push(buffer);
+            vertex_buffers.push(buffer);
         }
 
         let index_buffer = geometry.indices.as_ref().map(|indices| IndexBuffer::from_index_data(gl, indices));
 
-        let vertex_count = if let Some(attribute) = geometry.attributes.get(0) {
+        let vertex_count = if let Some(attribute) = geometry.vertex_data.get(0) {
             attribute.vertex_count() as i32
         } else {
             0
@@ -70,7 +70,7 @@ impl GeometryResource {
         GeometryResource {
             vertex_count,
             index_buffer,
-            attribute_buffers,
+            vertex_buffers,
         }
     }
 }

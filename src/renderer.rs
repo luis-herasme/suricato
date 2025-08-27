@@ -61,7 +61,7 @@ impl Renderer {
         }
 
         // Set attributes
-        for attribute in &geometry_resource.attribute_buffers {
+        for attribute in &geometry_resource.vertex_buffers {
             material_resource.set_attribute_buffer(attribute);
         }
 
