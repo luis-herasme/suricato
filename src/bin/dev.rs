@@ -7,21 +7,25 @@ fn main() {
 
     let vertex_shader_source = r#"#version 300 es
 in vec2 position;
+in vec3 color;
 
 uniform mat4 transform;
+out vec3 v_color;
 
 void main() {
+    v_color = color;
     gl_Position = transform * vec4(position, 0.0, 1.0);
 }
 "#;
     let fragment_shader_source = r#"#version 300 es
 precision mediump float;
 
-uniform vec4 color;
+// uniform vec4 color;
 out vec4 fragment_color;
+in vec3 v_color;
 
 void main() {
-    fragment_color = color;
+    fragment_color = vec4(v_color, 1.0);
 }
 "#;
 
@@ -41,12 +45,10 @@ void main() {
 
         transform1.rotation = transform1.rotation.mul_quat(rotation1);
         material.set_uniform("transform", Uniform::Mat4(transform1.to_array()));
-        material.set_uniform("color", Uniform::Vec4([0.0, 1.0, 0.0, 1.0]));
         renderer.render(&material, &geometry);
 
         transform2.rotation = transform2.rotation.mul_quat(rotation2);
         material.set_uniform("transform", Uniform::Mat4(transform2.to_array()));
-        material.set_uniform("color", Uniform::Vec4([1.0, 0.0, 0.0, 1.0]));
         renderer.render(&material, &geometry);
     }) as Box<dyn FnMut()>);
 

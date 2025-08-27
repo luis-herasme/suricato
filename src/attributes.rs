@@ -86,6 +86,14 @@ pub enum VertexBuffer {
 }
 
 impl VertexBuffer {
+    pub fn single_attribute(name: &str, data: VertexData) -> VertexBuffer {
+        VertexBuffer::SingleAttribute(SingleAttributeVertexBuffer::new(name, data))
+    }
+
+    pub fn interleaved_attributes(data: Vec<(String, VertexData)>) -> VertexBuffer {
+        VertexBuffer::InterleavedAttributes(InterleavedAttributesVertexBuffer::new(data))
+    }
+
     pub fn id(&self) -> u64 {
         match &self {
             VertexBuffer::SingleAttribute(data) => data.id,

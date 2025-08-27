@@ -1,5 +1,5 @@
 use crate::{
-    attributes::{SingleAttributeVertexBuffer, VertexBuffer, VertexData},
+    attributes::{VertexBuffer, VertexData},
     index_buffer::{IndexBuffer, IndexData},
 };
 
@@ -13,23 +13,33 @@ impl Geometry {
     #[rustfmt::skip]
     pub fn quad() -> Geometry {
         let vertex_data = vec![
-            VertexBuffer::SingleAttribute(
-                SingleAttributeVertexBuffer::new(
-                    "position",
-                    VertexData::Vec2(vec![
-                        (0.5, 0.5),   // Top right
-                        (0.5, -0.5),  // Bottom right
-                        (-0.5, -0.5), // Bottom left
-                        (-0.5, 0.5),  // Top left
-                    ])
-                )
+            VertexBuffer::interleaved_attributes(
+                vec![
+                    (
+                        "position".to_string(),
+                        VertexData::Vec2(vec![
+                            (0.5, 0.5),   // Top right
+                            (0.5, -0.5),  // Bottom right
+                            (-0.5, -0.5), // Bottom left
+                            (-0.5, 0.5),  // Top left
+                        ])
+                    ),
+                    (
+                        "color".to_string(),
+                        VertexData::Vec3(vec![
+                            (1.0, 0.0, 0.0), // Top right
+                            (0.0, 1.0, 0.0), // Bottom right
+                            (0.0, 0.0, 1.0), // Bottom left
+                            (0.0, 1.0, 0.0), // Top left
+                        ])
+                    )
+                ]
             )
         ];
 
-        let vertex_count = if let Some(attribute) = vertex_data.get(0) {
-            attribute.vertex_count() as i32
-        } else {
-            0
+        let vertex_count = match vertex_data.get(0) {
+            Some(attribute) => attribute.vertex_count() as i32,
+            None => 0
         };
 
         Geometry {
