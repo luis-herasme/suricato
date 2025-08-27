@@ -1,14 +1,14 @@
 use web_sys::WebGl2RenderingContext;
 
 use crate::{
-    attributes::{AttributeBuffer, AttributeData},
+    attributes::{Attribute, AttributeBuffer, AttributeData, InterleavedAttributeBuffer, SingleAttributeBuffer},
     generate_id::generate_id,
     index_buffer::{IndexBuffer, IndexData},
 };
 
 pub struct Geometry {
     pub id:         u64,
-    pub attributes: Vec<AttributeData>,
+    pub attributes: Vec<Attribute>,
     pub indices:    Option<IndexData>,
 }
 
@@ -18,15 +18,17 @@ impl Geometry {
         Geometry {
             id: generate_id(),
             attributes: vec![
-                AttributeData::Vec2 {
-                    name: String::from("position"),
-                    data: vec![
-                        (0.5, 0.5),   // Top right
-                        (0.5, -0.5),  // Bottom right
-                        (-0.5, -0.5), // Bottom left
-                        (-0.5, 0.5),  // Top left
-                    ],
-                }
+                Attribute::Single(
+                    AttributeData::Vec2 {
+                        name: String::from("position"),
+                        data: vec![
+                            (0.5, 0.5),   // Top right
+                            (0.5, -0.5),  // Bottom right
+                            (-0.5, -0.5), // Bottom left
+                            (-0.5, 0.5),  // Top left
+                        ],
+                    }
+                )
             ],
             indices: Some(
                 IndexData::UnsignedInt(vec![
@@ -49,13 +51,18 @@ impl GeometryResource {
         let mut attributes = Vec::new();
 
         for attribute in &geometry.attributes {
-            attributes.push(AttributeBuffer::from_attribute_data(gl, attribute))
+            let buffer = match attribute {
+                Attribute::Single(attribute) => SingleAttributeBuffer::from_attribute(gl, attribute),
+                Attribute::Interleaved(attributes) => InterleavedAttributeBuffer::from_attributes(gl, attributes),
+            };
+
+            attributes.push(buffer);
         }
 
         let indices = geometry.indices.as_ref().map(|indices| IndexBuffer::from_index_data(gl, indices));
 
         GeometryResource {
-            vertex_count: geometry.attributes.get(0).unwrap().number_of_elements() as u32,
+            vertex_count: geometry.attributes.get(0).unwrap().vertex_count() as u32,
             indices,
             attributes,
         }

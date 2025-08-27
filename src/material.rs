@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
 use crate::{
-    attributes::{AttributeBuffer, InterleavedAttributeBuffer},
+    attributes::{AttributeBuffer, InterleavedAttributeBuffer, SingleAttributeBuffer},
     generate_id::generate_id,
     uniforms::Uniform,
 };
@@ -127,7 +127,14 @@ impl MaterialResource {
     }
 
     /// ATTRIBUTES
-    pub fn set_attribute(&self, attribute: &AttributeBuffer) {
+    pub fn set_attribute_buffer(&self, attribute_buffer: &AttributeBuffer) {
+        match attribute_buffer {
+            AttributeBuffer::Single(attribute_buffer) => self.set_single_attribute_buffer(attribute_buffer),
+            AttributeBuffer::Interleaved(attribute_buffer) => self.set_interleaved_attribute_buffer(attribute_buffer),
+        }
+    }
+
+    fn set_single_attribute_buffer(&self, attribute: &SingleAttributeBuffer) {
         let location = self.attribute_locations.get(&attribute.name).unwrap();
         self.gl.enable_vertex_attrib_array(*location);
         self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&attribute.buffer));
@@ -141,7 +148,7 @@ impl MaterialResource {
         )
     }
 
-    pub fn set_attributes(&self, attributes: &InterleavedAttributeBuffer) {
+    fn set_interleaved_attribute_buffer(&self, attributes: &InterleavedAttributeBuffer) {
         self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&attributes.buffer));
 
         for attribute in &attributes.description {

@@ -60,7 +60,7 @@ impl Renderer {
 
         // Set attributes
         for attribute in &geometry_resource.attributes {
-            material_resource.set_attribute(attribute);
+            material_resource.set_attribute_buffer(attribute);
         }
 
         if let Some(indices) = &geometry_resource.indices {
