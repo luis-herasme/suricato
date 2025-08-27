@@ -3,22 +3,19 @@ use web_sys::{
     js_sys::{self, ArrayBuffer, DataView},
 };
 
-/// Extracted from:
-/// https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Constants#data_types
 #[repr(u32)]
 #[derive(Debug, Clone, Copy)]
 pub enum ComponentType {
-    Byte          = 0x1400,
-    UnsignedByte  = 0x1401,
-    Short         = 0x1402,
-    UnsignedShort = 0x1403,
-    Int           = 0x1404,
-    UnsignedInt   = 0x1405,
-    Float         = 0x1406,
+    Byte          = WebGl2RenderingContext::BYTE,
+    UnsignedByte  = WebGl2RenderingContext::UNSIGNED_BYTE,
+    Short         = WebGl2RenderingContext::SHORT,
+    UnsignedShort = WebGl2RenderingContext::UNSIGNED_SHORT,
+    Int           = WebGl2RenderingContext::INT,
+    UnsignedInt   = WebGl2RenderingContext::UNSIGNED_INT,
+    Float         = WebGl2RenderingContext::FLOAT,
 }
 
 impl ComponentType {
-    // https://developer.mozilla.org/en-US/docs/Web/API/WebGL_API/Types
     fn number_of_bytes(&self) -> u8 {
         match &self {
             ComponentType::Byte => 1,
@@ -48,7 +45,7 @@ pub struct SingleAttributeBuffer {
 }
 
 impl SingleAttributeBuffer {
-    pub fn from_attribute(gl: &WebGl2RenderingContext, data: &AttributeData) -> AttributeBuffer {
+    pub fn new(gl: &WebGl2RenderingContext, data: &AttributeData) -> AttributeBuffer {
         let buffer = match data {
             AttributeData::Float { name, data } => SingleAttributeBuffer::float(gl, name.clone(), data),
             AttributeData::Vec2 { name, data } => SingleAttributeBuffer::vec2(gl, name.clone(), data),
@@ -213,7 +210,7 @@ pub struct AttributeDescription {
 }
 
 impl InterleavedAttributeBuffer {
-    pub fn from_attributes(gl: &WebGl2RenderingContext, attributes_data: &Vec<AttributeData>) -> AttributeBuffer {
+    pub fn new(gl: &WebGl2RenderingContext, attributes_data: &Vec<AttributeData>) -> AttributeBuffer {
         let attribute_descriptions = InterleavedAttributeBuffer::convert_attribute_data_to_description(&attributes_data);
 
         let attribute_data = attributes_data.get(0).unwrap();

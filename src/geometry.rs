@@ -52,8 +52,8 @@ impl GeometryResource {
 
         for attribute in &geometry.attributes {
             let buffer = match attribute {
-                Attribute::Single(attribute) => SingleAttributeBuffer::from_attribute(gl, attribute),
-                Attribute::Interleaved(attributes) => InterleavedAttributeBuffer::from_attributes(gl, attributes),
+                Attribute::Single(attribute) => SingleAttributeBuffer::new(gl, attribute),
+                Attribute::Interleaved(attributes) => InterleavedAttributeBuffer::new(gl, attributes),
             };
 
             attributes.push(buffer);
