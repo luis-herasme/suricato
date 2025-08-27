@@ -1,7 +1,7 @@
 use web_sys::{WebGl2RenderingContext, WebGlBuffer};
 
 use crate::{
-    attributes::{AttributeData, SingleAttributeVertexData, VertexData},
+    attributes::{VertexData, SingleAttributeVertexBuffer, VertexBuffer},
     generate_id::generate_id,
     index_buffer::{IndexBuffer, IndexData},
 };
@@ -9,7 +9,7 @@ use crate::{
 pub struct Geometry {
     pub id:          u64,
     pub indices:     Option<IndexBuffer>,
-    pub vertex_data: Vec<VertexData>,
+    pub vertex_data: Vec<VertexBuffer>,
 }
 
 impl Geometry {
@@ -18,10 +18,10 @@ impl Geometry {
         Geometry {
             id: generate_id(),
             vertex_data: vec![
-                VertexData::SingleAttribute(
-                    SingleAttributeVertexData::new(
+                VertexBuffer::SingleAttribute(
+                    SingleAttributeVertexBuffer::new(
                         "position",
-                        AttributeData::Vec2(vec![
+                        VertexData::Vec2(vec![
                             (0.5, 0.5),   // Top right
                             (0.5, -0.5),  // Bottom right
                             (-0.5, -0.5), // Bottom left
@@ -54,8 +54,8 @@ impl GeometryResource {
 
         for vertex_data in &geometry.vertex_data {
             let buffer = match vertex_data {
-                VertexData::SingleAttribute(attribute) => attribute.create_webgl_buffer(gl),
-                VertexData::InterleavedAttributes(attribute) => attribute.create_webgl_buffer(gl),
+                VertexBuffer::SingleAttribute(attribute) => attribute.create_webgl_buffer(gl),
+                VertexBuffer::InterleavedAttributes(attribute) => attribute.create_webgl_buffer(gl),
             };
 
             vertex_webgl_buffers.push(buffer);

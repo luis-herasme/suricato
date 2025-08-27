@@ -40,38 +40,38 @@ pub struct AttributeLayout {
     pub offset:          i32,
 }
 
-pub enum AttributeData {
+pub enum VertexData {
     Float(Vec<f32>),
     Vec2(Vec<(f32, f32)>),
     Vec3(Vec<(f32, f32, f32)>),
     Vec4(Vec<(f32, f32, f32, f32)>),
 }
 
-impl AttributeData {
-    pub fn vertex_count(&self) -> usize {
+impl VertexData {
+    pub fn count(&self) -> usize {
         match &self {
-            AttributeData::Float(data) => data.len(),
-            AttributeData::Vec2(data) => data.len(),
-            AttributeData::Vec3(data) => data.len(),
-            AttributeData::Vec4(data) => data.len(),
+            VertexData::Float(data) => data.len(),
+            VertexData::Vec2(data) => data.len(),
+            VertexData::Vec3(data) => data.len(),
+            VertexData::Vec4(data) => data.len(),
         }
     }
 
     fn number_of_components(&self) -> u8 {
         match &self {
-            AttributeData::Float { .. } => 1,
-            AttributeData::Vec2 { .. } => 2,
-            AttributeData::Vec3 { .. } => 3,
-            AttributeData::Vec4 { .. } => 4,
+            VertexData::Float { .. } => 1,
+            VertexData::Vec2 { .. } => 2,
+            VertexData::Vec3 { .. } => 3,
+            VertexData::Vec4 { .. } => 4,
         }
     }
 
     fn component_type(&self) -> AttributeComponentType {
         match &self {
-            AttributeData::Float { .. } => AttributeComponentType::Float,
-            AttributeData::Vec2 { .. } => AttributeComponentType::Float,
-            AttributeData::Vec3 { .. } => AttributeComponentType::Float,
-            AttributeData::Vec4 { .. } => AttributeComponentType::Float,
+            VertexData::Float { .. } => AttributeComponentType::Float,
+            VertexData::Vec2 { .. } => AttributeComponentType::Float,
+            VertexData::Vec3 { .. } => AttributeComponentType::Float,
+            VertexData::Vec4 { .. } => AttributeComponentType::Float,
         }
     }
 
@@ -80,18 +80,18 @@ impl AttributeData {
     }
 }
 
-pub enum VertexData {
-    SingleAttribute(SingleAttributeVertexData),
-    InterleavedAttributes(InterleavedAttributesVertexData),
+pub enum VertexBuffer {
+    SingleAttribute(SingleAttributeVertexBuffer),
+    InterleavedAttributes(InterleavedAttributesVertexBuffer),
 }
 
-impl VertexData {
+impl VertexBuffer {
     pub fn vertex_count(&self) -> usize {
         match &self {
-            VertexData::SingleAttribute(attribute) => attribute.data.vertex_count(),
-            VertexData::InterleavedAttributes(attribute_vector) => {
+            VertexBuffer::SingleAttribute(attribute) => attribute.data.count(),
+            VertexBuffer::InterleavedAttributes(attribute_vector) => {
                 for attribute_data in &attribute_vector.data {
-                    return attribute_data.vertex_count();
+                    return attribute_data.count();
                 }
 
                 unreachable!("Interleaved attribute data will never be empty");
@@ -100,14 +100,14 @@ impl VertexData {
     }
 }
 
-pub struct SingleAttributeVertexData {
+pub struct SingleAttributeVertexBuffer {
     pub id:     u64,
-    pub data:   AttributeData,
+    pub data:   VertexData,
     pub layout: AttributeLayout,
 }
 
-impl SingleAttributeVertexData {
-    pub fn new(name: &str, data: AttributeData) -> Self {
+impl SingleAttributeVertexBuffer {
+    pub fn new(name: &str, data: VertexData) -> Self {
         let component_count = data.number_of_components() as i32;
 
         Self {
@@ -126,15 +126,15 @@ impl SingleAttributeVertexData {
 
     pub fn create_webgl_buffer(&self, gl: &WebGl2RenderingContext) -> WebGlBuffer {
         match &self.data {
-            AttributeData::Float(data) => SingleAttributeVertexData::float(gl, data),
-            AttributeData::Vec2(data) => SingleAttributeVertexData::vec2(gl, data),
-            AttributeData::Vec3(data) => SingleAttributeVertexData::vec3(gl, data),
-            AttributeData::Vec4(data) => SingleAttributeVertexData::vec4(gl, data),
+            VertexData::Float(data) => SingleAttributeVertexBuffer::float(gl, data),
+            VertexData::Vec2(data) => SingleAttributeVertexBuffer::vec2(gl, data),
+            VertexData::Vec3(data) => SingleAttributeVertexBuffer::vec3(gl, data),
+            VertexData::Vec4(data) => SingleAttributeVertexBuffer::vec4(gl, data),
         }
     }
 
     fn float(gl: &WebGl2RenderingContext, data: &Vec<f32>) -> WebGlBuffer {
-        SingleAttributeVertexData::create_float_buffer(gl, data)
+        SingleAttributeVertexBuffer::create_float_buffer(gl, data)
     }
 
     fn vec2(gl: &WebGl2RenderingContext, data: &Vec<(f32, f32)>) -> WebGlBuffer {
@@ -145,7 +145,7 @@ impl SingleAttributeVertexData {
             values.push(*b);
         }
 
-        SingleAttributeVertexData::create_float_buffer(gl, &values)
+        SingleAttributeVertexBuffer::create_float_buffer(gl, &values)
     }
 
     fn vec3(gl: &WebGl2RenderingContext, data: &Vec<(f32, f32, f32)>) -> WebGlBuffer {
@@ -157,7 +157,7 @@ impl SingleAttributeVertexData {
             values.push(*c);
         }
 
-        SingleAttributeVertexData::create_float_buffer(gl, &values)
+        SingleAttributeVertexBuffer::create_float_buffer(gl, &values)
     }
 
     fn vec4(gl: &WebGl2RenderingContext, data: &Vec<(f32, f32, f32, f32)>) -> WebGlBuffer {
@@ -170,7 +170,7 @@ impl SingleAttributeVertexData {
             values.push(*d);
         }
 
-        SingleAttributeVertexData::create_float_buffer(gl, &values)
+        SingleAttributeVertexBuffer::create_float_buffer(gl, &values)
     }
 
     #[inline]
@@ -187,15 +187,15 @@ impl SingleAttributeVertexData {
     }
 }
 
-pub struct InterleavedAttributesVertexData {
+pub struct InterleavedAttributesVertexBuffer {
     pub id:     u64,
-    pub data:   Vec<AttributeData>,
+    pub data:   Vec<VertexData>,
     pub layout: Vec<AttributeLayout>,
 }
 
-impl InterleavedAttributesVertexData {
-    pub fn new(data: Vec<(String, AttributeData)>) -> Self {
-        let layout = InterleavedAttributesVertexData::convert_attribute_data_array_to_attribute_layout_array(&data);
+impl InterleavedAttributesVertexBuffer {
+    pub fn new(data: Vec<(String, VertexData)>) -> Self {
+        let layout = InterleavedAttributesVertexBuffer::convert_attribute_data_array_to_attribute_layout_array(&data);
 
         Self {
             id: generate_id(),
@@ -204,7 +204,7 @@ impl InterleavedAttributesVertexData {
         }
     }
 
-    fn convert_attribute_data_array_to_attribute_layout_array(attributes: &[(String, AttributeData)]) -> Vec<AttributeLayout> {
+    fn convert_attribute_data_array_to_attribute_layout_array(attributes: &[(String, VertexData)]) -> Vec<AttributeLayout> {
         let mut attribute_layout = Vec::new();
         let mut offset = 0;
 
@@ -235,33 +235,33 @@ impl InterleavedAttributesVertexData {
         let attribute_layout = self.layout.get(0).unwrap();
 
         let stride = attribute_layout.stride;
-        let buffer_size = stride as u32 * attribute_data.vertex_count() as u32;
+        let buffer_size = stride as u32 * attribute_data.count() as u32;
 
         let array_buffer = ArrayBuffer::new(buffer_size);
         let data_view = DataView::new(&array_buffer, 0, buffer_size as usize);
 
-        for vertex_index in 0..attribute_data.vertex_count() {
+        for vertex_index in 0..attribute_data.count() {
             for (attribute_index, attribute_data) in self.data.iter().enumerate() {
                 let attribute_description = &self.layout[attribute_index];
                 let offset = stride as usize * vertex_index + attribute_description.offset as usize;
 
                 match attribute_data {
-                    AttributeData::Float(data) => {
+                    VertexData::Float(data) => {
                         let value = data.get(vertex_index).unwrap();
                         data_view.set_float32_endian(offset, *value, true);
                     }
-                    AttributeData::Vec2(data) => {
+                    VertexData::Vec2(data) => {
                         let value = data.get(vertex_index).unwrap();
                         data_view.set_float32_endian(offset, value.0, true);
                         data_view.set_float32_endian(offset + 4, value.1, true);
                     }
-                    AttributeData::Vec3(data) => {
+                    VertexData::Vec3(data) => {
                         let value = data.get(vertex_index).unwrap();
                         data_view.set_float32_endian(offset, value.0, true);
                         data_view.set_float32_endian(offset + 4, value.1, true);
                         data_view.set_float32_endian(offset + 8, value.2, true);
                     }
-                    AttributeData::Vec4(data) => {
+                    VertexData::Vec4(data) => {
                         let value = data.get(vertex_index).unwrap();
                         data_view.set_float32_endian(offset, value.0, true);
                         data_view.set_float32_endian(offset + 4, value.1, true);

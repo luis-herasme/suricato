@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
 use crate::{
-    attributes::{InterleavedAttributesVertexData, SingleAttributeVertexData, VertexData},
+    attributes::{InterleavedAttributesVertexBuffer, SingleAttributeVertexBuffer, VertexBuffer},
     generate_id::generate_id,
     uniforms::Uniform,
 };
@@ -128,14 +128,14 @@ impl MaterialResource {
     }
 
     /// ATTRIBUTES
-    pub fn set_attribute_buffer(&self, vertex_data: &VertexData, buffer: &WebGlBuffer) {
+    pub fn set_attribute_buffer(&self, vertex_data: &VertexBuffer, buffer: &WebGlBuffer) {
         match vertex_data {
-            VertexData::SingleAttribute(attribute) => self.set_single_attribute_buffer(attribute, buffer),
-            VertexData::InterleavedAttributes(attribute) => self.set_interleaved_attribute_buffer(attribute, buffer),
+            VertexBuffer::SingleAttribute(attribute) => self.set_single_attribute_buffer(attribute, buffer),
+            VertexBuffer::InterleavedAttributes(attribute) => self.set_interleaved_attribute_buffer(attribute, buffer),
         }
     }
 
-    fn set_single_attribute_buffer(&self, attribute: &SingleAttributeVertexData, buffer: &WebGlBuffer) {
+    fn set_single_attribute_buffer(&self, attribute: &SingleAttributeVertexBuffer, buffer: &WebGlBuffer) {
         let location = self.attribute_locations.get(&attribute.layout.name).unwrap();
         self.gl.enable_vertex_attrib_array(*location);
         self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(buffer));
@@ -149,7 +149,7 @@ impl MaterialResource {
         )
     }
 
-    fn set_interleaved_attribute_buffer(&self, attributes: &InterleavedAttributesVertexData, buffer: &WebGlBuffer) {
+    fn set_interleaved_attribute_buffer(&self, attributes: &InterleavedAttributesVertexBuffer, buffer: &WebGlBuffer) {
         self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
 
         for attribute in &attributes.layout {
