@@ -40,6 +40,11 @@ impl Renderer {
         }
     }
 
+    pub fn clear(&self) {
+        self.gl.clear_color(0.0, 0.0, 0.0, 1.0);
+        self.gl.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
+    }
+
     #[rustfmt::skip]
     pub fn render(&mut self, material: &Material, geometry: &Geometry) {
         self.create_geometry_resource(geometry);
