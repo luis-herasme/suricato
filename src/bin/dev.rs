@@ -31,7 +31,6 @@ void main() {
 
     let mut material = Material::new(vertex_shader_source, fragment_shader_source);
 
-    let geometry = Geometry::quad();
     let mut renderer = Renderer::new();
 
     let mut transform1 = Transform::new();
@@ -40,16 +39,20 @@ void main() {
     let mut transform2 = Transform::new();
     let rotation2 = Quat::from_rotation_z(0.02);
 
-    let callback = Closure::wrap(Box::new(move || {
-        renderer.clear();
+    let mut geometry = Geometry::quad();
+    let mut t = 0.1;
 
+    let callback = Closure::wrap(Box::new(move || {
+        t += 0.01;
+        geometry.set_vertex_at_f32("position", 0, f32::sin(t));
+
+        renderer.clear();
         transform1.rotation = transform1.rotation.mul_quat(rotation1);
         material.set_uniform("transform", Uniform::Mat4(transform1.to_array()));
-        renderer.render(&material, &geometry);
-
+        renderer.render(&mut material, &mut geometry);
         transform2.rotation = transform2.rotation.mul_quat(rotation2);
         material.set_uniform("transform", Uniform::Mat4(transform2.to_array()));
-        renderer.render(&material, &geometry);
+        renderer.render(&mut material, &mut geometry);
     }) as Box<dyn FnMut()>);
 
     web_sys::window()

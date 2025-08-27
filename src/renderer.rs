@@ -46,7 +46,7 @@ impl Renderer {
     }
 
     #[rustfmt::skip]
-    pub fn render(&mut self, material: &Material, geometry: &Geometry) {
+    pub fn render(&mut self, material: &mut Material, geometry: &mut Geometry) {
         self.create_geometry_resource(geometry);
 
         if !self.materials.contains_key(&material.id) {
@@ -98,13 +98,19 @@ impl Renderer {
         self.materials.insert(material.id, resource);
     }
 
-    fn create_geometry_resource(&mut self, geometry: &Geometry) {
-        for vertex_data in &geometry.vertex_data {
+    fn create_geometry_resource(&mut self, geometry: &mut Geometry) {
+        for vertex_data in &mut geometry.vertex_data {
             let id = vertex_data.id();
 
             if !self.webgl_buffers.contains_key(&id) {
-                let buffer = vertex_data.create_webgl_buffer(&self.gl);
-                self.webgl_buffers.insert(id, buffer);
+                let webgl_buffer = self.gl.create_buffer().unwrap();
+                self.webgl_buffers.insert(id, webgl_buffer);
+            }
+
+            if vertex_data.needs_update() {
+                let webgl_buffer = self.webgl_buffers.get(&vertex_data.id()).unwrap();
+                vertex_data.update_webgl_buffer(&self.gl, &webgl_buffer);
+                vertex_data.set_needs_update(false);
             }
         }
 

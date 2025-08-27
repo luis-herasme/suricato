@@ -42,18 +42,18 @@ pub struct AttributeLayout {
 
 pub enum VertexData {
     Float(Vec<f32>),
-    Vec2(Vec<(f32, f32)>),
-    Vec3(Vec<(f32, f32, f32)>),
-    Vec4(Vec<(f32, f32, f32, f32)>),
+    Vec2(Vec<f32>),
+    Vec3(Vec<f32>),
+    Vec4(Vec<f32>),
 }
 
 impl VertexData {
     pub fn count(&self) -> usize {
         match &self {
             VertexData::Float(data) => data.len(),
-            VertexData::Vec2(data) => data.len(),
-            VertexData::Vec3(data) => data.len(),
-            VertexData::Vec4(data) => data.len(),
+            VertexData::Vec2(data) => data.len() / 2,
+            VertexData::Vec3(data) => data.len() / 3,
+            VertexData::Vec4(data) => data.len() / 4,
         }
     }
 
@@ -101,10 +101,24 @@ impl VertexBuffer {
         }
     }
 
-    pub fn create_webgl_buffer(&self, gl: &WebGl2RenderingContext) -> WebGlBuffer {
+    pub fn needs_update(&self) -> bool {
         match &self {
-            VertexBuffer::SingleAttribute(buffer) => buffer.create_webgl_buffer(gl),
-            VertexBuffer::InterleavedAttributes(buffer) => buffer.create_webgl_buffer(gl),
+            VertexBuffer::SingleAttribute(data) => data.needs_update,
+            VertexBuffer::InterleavedAttributes(data) => data.needs_update,
+        }
+    }
+
+    pub fn set_needs_update(&mut self, value: bool) {
+        match self {
+            VertexBuffer::SingleAttribute(data) => data.needs_update = value,
+            VertexBuffer::InterleavedAttributes(data) => data.needs_update = value,
+        }
+    }
+
+    pub fn update_webgl_buffer(&self, gl: &WebGl2RenderingContext, webgl_buffer: &WebGlBuffer) {
+        match &self {
+            VertexBuffer::SingleAttribute(buffer) => buffer.update_webgl_buffer(gl, webgl_buffer),
+            VertexBuffer::InterleavedAttributes(buffer) => buffer.update_webgl_buffer(gl, webgl_buffer),
         }
     }
 
@@ -123,9 +137,10 @@ impl VertexBuffer {
 }
 
 pub struct SingleAttributeVertexBuffer {
-    pub id:     u64,
-    pub data:   VertexData,
-    pub layout: AttributeLayout,
+    pub id:           u64,
+    pub data:         VertexData,
+    pub layout:       AttributeLayout,
+    pub needs_update: bool,
 }
 
 impl SingleAttributeVertexBuffer {
@@ -143,76 +158,44 @@ impl SingleAttributeVertexBuffer {
                 stride: 0,
                 offset: 0,
             },
+            needs_update: true,
         }
     }
 
-    pub fn create_webgl_buffer(&self, gl: &WebGl2RenderingContext) -> WebGlBuffer {
+    pub fn set_vertex_at_f32(&mut self, index: usize, value: f32) {
+        match &mut self.data {
+            VertexData::Float(data) => data[index] = value,
+            VertexData::Vec2(data) => data[index] = value,
+            VertexData::Vec3(data) => data[index] = value,
+            VertexData::Vec4(data) => data[index] = value,
+        };
+    }
+
+    pub fn update_webgl_buffer(&self, gl: &WebGl2RenderingContext, buffer: &WebGlBuffer) {
         match &self.data {
-            VertexData::Float(data) => SingleAttributeVertexBuffer::float(gl, data),
-            VertexData::Vec2(data) => SingleAttributeVertexBuffer::vec2(gl, data),
-            VertexData::Vec3(data) => SingleAttributeVertexBuffer::vec3(gl, data),
-            VertexData::Vec4(data) => SingleAttributeVertexBuffer::vec4(gl, data),
-        }
-    }
-
-    fn float(gl: &WebGl2RenderingContext, data: &Vec<f32>) -> WebGlBuffer {
-        SingleAttributeVertexBuffer::create_float_buffer(gl, data)
-    }
-
-    fn vec2(gl: &WebGl2RenderingContext, data: &Vec<(f32, f32)>) -> WebGlBuffer {
-        let mut values = Vec::with_capacity(data.len() * 2);
-
-        for (a, b) in data {
-            values.push(*a);
-            values.push(*b);
-        }
-
-        SingleAttributeVertexBuffer::create_float_buffer(gl, &values)
-    }
-
-    fn vec3(gl: &WebGl2RenderingContext, data: &Vec<(f32, f32, f32)>) -> WebGlBuffer {
-        let mut values = Vec::with_capacity(data.len() * 3);
-
-        for (a, b, c) in data {
-            values.push(*a);
-            values.push(*b);
-            values.push(*c);
-        }
-
-        SingleAttributeVertexBuffer::create_float_buffer(gl, &values)
-    }
-
-    fn vec4(gl: &WebGl2RenderingContext, data: &Vec<(f32, f32, f32, f32)>) -> WebGlBuffer {
-        let mut values = Vec::with_capacity(data.len() * 4);
-
-        for (a, b, c, d) in data {
-            values.push(*a);
-            values.push(*b);
-            values.push(*c);
-            values.push(*d);
-        }
-
-        SingleAttributeVertexBuffer::create_float_buffer(gl, &values)
+            VertexData::Float(data) => SingleAttributeVertexBuffer::set_float_buffer(gl, buffer, data),
+            VertexData::Vec2(data) => SingleAttributeVertexBuffer::set_float_buffer(gl, buffer, data),
+            VertexData::Vec3(data) => SingleAttributeVertexBuffer::set_float_buffer(gl, buffer, data),
+            VertexData::Vec4(data) => SingleAttributeVertexBuffer::set_float_buffer(gl, buffer, data),
+        };
     }
 
     #[inline]
-    fn create_float_buffer(gl: &WebGl2RenderingContext, data: &Vec<f32>) -> WebGlBuffer {
-        let buffer = gl.create_buffer().unwrap();
+    fn set_float_buffer(gl: &WebGl2RenderingContext, buffer: &WebGlBuffer, data: &Vec<f32>) {
         gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
 
         unsafe {
             let data = js_sys::Float32Array::view(&data);
             gl.buffer_data_with_array_buffer_view(WebGl2RenderingContext::ARRAY_BUFFER, &data, WebGl2RenderingContext::STATIC_DRAW);
         }
-
-        buffer
     }
 }
 
 pub struct InterleavedAttributesVertexBuffer {
-    pub id:     u64,
-    pub data:   Vec<VertexData>,
-    pub layout: Vec<AttributeLayout>,
+    pub id:           u64,
+    pub data:         Vec<VertexData>,
+    pub layout:       Vec<AttributeLayout>,
+    pub needs_update: bool,
 }
 
 impl InterleavedAttributesVertexBuffer {
@@ -223,7 +206,30 @@ impl InterleavedAttributesVertexBuffer {
             id: generate_id(),
             data: data.into_iter().map(|x| x.1).collect(),
             layout,
+            needs_update: true,
         }
+    }
+
+    pub fn set_vertex_at_f32(&mut self, name: &str, index: usize, value: f32) -> bool {
+        for i in 0..self.data.len() {
+            if self.layout[i].name != name {
+                continue;
+            }
+
+            let attribute = &mut self.data[i];
+
+            match attribute {
+                VertexData::Float(data) => data[index] = value,
+                VertexData::Vec2(data) => data[index] = value,
+                VertexData::Vec3(data) => data[index] = value,
+                VertexData::Vec4(data) => data[index] = value,
+            };
+
+            self.needs_update = true;
+            return true;
+        }
+
+        false
     }
 
     fn convert_attribute_data_array_to_attribute_layout_array(attributes: &[(String, VertexData)]) -> Vec<AttributeLayout> {
@@ -252,7 +258,7 @@ impl InterleavedAttributesVertexBuffer {
         attribute_layout
     }
 
-    pub fn create_webgl_buffer(&self, gl: &WebGl2RenderingContext) -> WebGlBuffer {
+    pub fn update_webgl_buffer(&self, gl: &WebGl2RenderingContext, buffer: &WebGlBuffer) {
         let attribute_data = self.data.get(0).unwrap();
         let attribute_layout = self.layout.get(0).unwrap();
 
@@ -269,32 +275,46 @@ impl InterleavedAttributesVertexBuffer {
 
                 match attribute_data {
                     VertexData::Float(data) => {
-                        let value = data.get(vertex_index).unwrap();
-                        data_view.set_float32_endian(offset, *value, true);
+                        let value = data[vertex_index];
+                        data_view.set_float32_endian(offset, value, true);
                     }
                     VertexData::Vec2(data) => {
-                        let value = data.get(vertex_index).unwrap();
-                        data_view.set_float32_endian(offset, value.0, true);
-                        data_view.set_float32_endian(offset + 4, value.1, true);
+                        let vertex_index = vertex_index * 2;
+
+                        let value_0 = data[vertex_index];
+                        let value_1 = data[vertex_index + 1];
+
+                        data_view.set_float32_endian(offset, value_0, true);
+                        data_view.set_float32_endian(offset + 4, value_1, true);
                     }
                     VertexData::Vec3(data) => {
-                        let value = data.get(vertex_index).unwrap();
-                        data_view.set_float32_endian(offset, value.0, true);
-                        data_view.set_float32_endian(offset + 4, value.1, true);
-                        data_view.set_float32_endian(offset + 8, value.2, true);
+                        let vertex_index = vertex_index * 3;
+
+                        let value_0 = data[vertex_index];
+                        let value_1 = data[vertex_index + 1];
+                        let value_2 = data[vertex_index + 2];
+
+                        data_view.set_float32_endian(offset, value_0, true);
+                        data_view.set_float32_endian(offset + 4, value_1, true);
+                        data_view.set_float32_endian(offset + 8, value_2, true);
                     }
                     VertexData::Vec4(data) => {
-                        let value = data.get(vertex_index).unwrap();
-                        data_view.set_float32_endian(offset, value.0, true);
-                        data_view.set_float32_endian(offset + 4, value.1, true);
-                        data_view.set_float32_endian(offset + 8, value.2, true);
-                        data_view.set_float32_endian(offset + 12, value.3, true);
+                        let vertex_index = vertex_index * 4;
+
+                        let value_0 = data[vertex_index];
+                        let value_1 = data[vertex_index + 1];
+                        let value_2 = data[vertex_index + 2];
+                        let value_3 = data[vertex_index + 3];
+
+                        data_view.set_float32_endian(offset, value_0, true);
+                        data_view.set_float32_endian(offset + 4, value_1, true);
+                        data_view.set_float32_endian(offset + 8, value_2, true);
+                        data_view.set_float32_endian(offset + 12, value_3, true);
                     }
                 }
             }
         }
 
-        let buffer = gl.create_buffer().unwrap();
         gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
 
         gl.buffer_data_with_array_buffer_view(
@@ -302,7 +322,5 @@ impl InterleavedAttributesVertexBuffer {
             &js_sys::Uint8Array::new(&array_buffer),
             WebGl2RenderingContext::STATIC_DRAW,
         );
-
-        buffer
     }
 }
