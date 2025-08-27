@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use web_sys::wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext};
+use web_sys::{WebGlBuffer, wasm_bindgen::JsCast};
 
 use crate::{
-    geometry::{Geometry, GeometryResource},
+    geometry::Geometry,
     material::{Material, MaterialResource},
 };
 
@@ -13,8 +13,8 @@ pub struct Renderer {
     pub canvas: HtmlCanvasElement,
 
     // Resources
-    materials:  HashMap<u64, MaterialResource>,
-    geometries: HashMap<u64, GeometryResource>,
+    materials:     HashMap<u64, MaterialResource>,
+    webgl_buffers: HashMap<u64, WebGlBuffer>,
 }
 
 impl Renderer {
@@ -36,22 +36,19 @@ impl Renderer {
             gl,
             canvas,
             materials: HashMap::new(),
-            geometries: HashMap::new(),
+            webgl_buffers: HashMap::new(),
         }
     }
 
     #[rustfmt::skip]
     pub fn render(&mut self, material: &Material, geometry: &Geometry) {
+        self.create_geometry_resource(geometry);
+
         if !self.materials.contains_key(&material.id) {
             self.create_material_resource(material);
         }
 
-        if !self.geometries.contains_key(&geometry.id) {
-            self.create_geometry_resource(geometry);
-        }
-
         let material_resource = self.materials.get(&material.id).unwrap();
-        let geometry_resource = self.geometries.get(&geometry.id).unwrap();
 
         material_resource.use_program();
 
@@ -61,12 +58,14 @@ impl Renderer {
         }
 
         // Set attributes
-        for (i, buffer) in geometry_resource.vertex_webgl_buffers.iter().enumerate() {
-            let attribute = &geometry.vertex_data[i];
-            material_resource.set_attribute_buffer(attribute, buffer);
+        for vertex_data in &geometry.vertex_data {
+            let buffer = self.webgl_buffers.get(&vertex_data.id()).unwrap(); // Created at create_geometry_resource
+            material_resource.set_attribute_buffer(vertex_data, buffer);
         }
 
-        if let Some(index_webgl_buffer) = &geometry_resource.index_webgl_buffer {
+        if let Some(indices) = &geometry.indices {
+            let index_webgl_buffer = self.webgl_buffers.get(&indices.id).unwrap();  // Created at create_geometry_resource
+
             let indices = geometry.indices.as_ref().unwrap();
 
             self.gl.bind_buffer(
@@ -84,7 +83,7 @@ impl Renderer {
             self.gl.draw_arrays(
                 WebGl2RenderingContext::TRIANGLES,
                 0,
-                geometry_resource.vertex_count
+                geometry.vertex_count
             );
         }
     }
@@ -95,7 +94,20 @@ impl Renderer {
     }
 
     fn create_geometry_resource(&mut self, geometry: &Geometry) {
-        let resource = GeometryResource::new(&self.gl, geometry);
-        self.geometries.insert(geometry.id, resource);
+        for vertex_data in &geometry.vertex_data {
+            let id = vertex_data.id();
+
+            if !self.webgl_buffers.contains_key(&id) {
+                let buffer = vertex_data.create_webgl_buffer(&self.gl);
+                self.webgl_buffers.insert(id, buffer);
+            }
+        }
+
+        if let Some(indices) = &geometry.indices {
+            if !self.webgl_buffers.contains_key(&indices.id) {
+                let buffer = indices.create_webgl_buffer(&self.gl);
+                self.webgl_buffers.insert(indices.id, buffer);
+            }
+        }
     }
 }

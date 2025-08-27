@@ -1,5 +1,7 @@
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, js_sys};
 
+use crate::generate_id::generate_id;
+
 pub enum IndexData {
     UnsignedByte(Vec<u8>),
     UnsignedShort(Vec<u16>),
@@ -32,6 +34,7 @@ pub struct IndexLayout {
 }
 
 pub struct IndexBuffer {
+    pub id:     u64,
     pub data:   IndexData,
     pub layout: IndexLayout,
 }
@@ -39,6 +42,7 @@ pub struct IndexBuffer {
 impl IndexBuffer {
     pub fn new(data: IndexData) -> IndexBuffer {
         IndexBuffer {
+            id: generate_id(),
             layout: IndexLayout {
                 offset:             0,
                 kind:               data.kind(),

@@ -86,6 +86,20 @@ pub enum VertexBuffer {
 }
 
 impl VertexBuffer {
+    pub fn id(&self) -> u64 {
+        match &self {
+            VertexBuffer::SingleAttribute(data) => data.id,
+            VertexBuffer::InterleavedAttributes(data) => data.id,
+        }
+    }
+
+    pub fn create_webgl_buffer(&self, gl: &WebGl2RenderingContext) -> WebGlBuffer {
+        match &self {
+            VertexBuffer::SingleAttribute(buffer) => buffer.create_webgl_buffer(gl),
+            VertexBuffer::InterleavedAttributes(buffer) => buffer.create_webgl_buffer(gl),
+        }
+    }
+
     pub fn vertex_count(&self) -> usize {
         match &self {
             VertexBuffer::SingleAttribute(attribute) => attribute.data.count(),
