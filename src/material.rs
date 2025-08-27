@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation};
+use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
 use crate::{
-    attributes::{VertexBuffer, InterleavedAttributesVertexBuffer, SingleAttributeVertexBuffer},
+    attributes::{InterleavedAttributesVertexData, SingleAttributeVertexData, VertexData},
     generate_id::generate_id,
     uniforms::Uniform,
 };
@@ -128,17 +128,17 @@ impl MaterialResource {
     }
 
     /// ATTRIBUTES
-    pub fn set_attribute_buffer(&self, attribute_buffer: &VertexBuffer) {
-        match attribute_buffer {
-            VertexBuffer::SingleAttribute(attribute_buffer) => self.set_single_attribute_buffer(attribute_buffer),
-            VertexBuffer::InterleavedAttributes(attribute_buffer) => self.set_interleaved_attribute_buffer(attribute_buffer),
+    pub fn set_attribute_buffer(&self, vertex_data: &VertexData, buffer: &WebGlBuffer) {
+        match vertex_data {
+            VertexData::SingleAttribute(attribute) => self.set_single_attribute_buffer(attribute, buffer),
+            VertexData::InterleavedAttributes(attribute) => self.set_interleaved_attribute_buffer(attribute, buffer),
         }
     }
 
-    fn set_single_attribute_buffer(&self, attribute: &SingleAttributeVertexBuffer) {
+    fn set_single_attribute_buffer(&self, attribute: &SingleAttributeVertexData, buffer: &WebGlBuffer) {
         let location = self.attribute_locations.get(&attribute.layout.name).unwrap();
         self.gl.enable_vertex_attrib_array(*location);
-        self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&attribute.buffer));
+        self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(buffer));
         self.gl.vertex_attrib_pointer_with_i32(
             *location,
             attribute.layout.component_count,
@@ -149,8 +149,8 @@ impl MaterialResource {
         )
     }
 
-    fn set_interleaved_attribute_buffer(&self, attributes: &InterleavedAttributesVertexBuffer) {
-        self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&attributes.buffer));
+    fn set_interleaved_attribute_buffer(&self, attributes: &InterleavedAttributesVertexData, buffer: &WebGlBuffer) {
+        self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
 
         for attribute in &attributes.layout {
             let location = self.attribute_locations.get(&attribute.name).unwrap();

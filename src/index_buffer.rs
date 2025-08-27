@@ -6,92 +6,82 @@ pub enum IndexData {
     UnsignedInt(Vec<u32>),
 }
 
-pub struct IndexBuffer {
-    pub buffer:             WebGlBuffer,
+impl IndexData {
+    fn count(&self) -> usize {
+        match &self {
+            IndexData::UnsignedByte(data) => data.len(),
+            IndexData::UnsignedShort(data) => data.len(),
+            IndexData::UnsignedInt(data) => data.len(),
+        }
+    }
+
+    fn kind(&self) -> u32 {
+        match &self {
+            IndexData::UnsignedByte(_) => WebGl2RenderingContext::UNSIGNED_BYTE,
+            IndexData::UnsignedShort(_) => WebGl2RenderingContext::UNSIGNED_SHORT,
+            IndexData::UnsignedInt(_) => WebGl2RenderingContext::UNSIGNED_INT,
+        }
+    }
+}
+
+pub struct IndexLayout {
     pub kind:               u32,
     pub count:              i32,
     pub offset:             i32,
     pub number_of_elements: u32,
 }
 
+pub struct IndexBuffer {
+    pub data:   IndexData,
+    pub layout: IndexLayout,
+}
+
 impl IndexBuffer {
-    pub fn from_index_data(gl: &WebGl2RenderingContext, index_data: &IndexData) -> IndexBuffer {
-        match index_data {
-            IndexData::UnsignedByte(data) => IndexBuffer::u8(gl, data),
-            IndexData::UnsignedShort(data) => IndexBuffer::u16(gl, data),
-            IndexData::UnsignedInt(data) => IndexBuffer::u32(gl, data),
+    pub fn new(data: IndexData) -> IndexBuffer {
+        IndexBuffer {
+            layout: IndexLayout {
+                offset:             0,
+                kind:               data.kind(),
+                count:              data.count() as i32,
+                number_of_elements: data.count() as u32,
+            },
+            data,
         }
     }
 
-    pub fn u8(gl: &WebGl2RenderingContext, data: &Vec<u8>) -> IndexBuffer {
+    pub fn create_webgl_buffer(&self, gl: &WebGl2RenderingContext) -> WebGlBuffer {
         let buffer = gl.create_buffer().unwrap();
         gl.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&buffer));
 
         unsafe {
-            let data = js_sys::Uint8Array::view(&data);
-            gl.buffer_data_with_array_buffer_view(
-                WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-                &data,
-                WebGl2RenderingContext::STATIC_DRAW,
-            );
+            match &self.data {
+                IndexData::UnsignedByte(data) => {
+                    let data = js_sys::Uint8Array::view(&data);
+                    gl.buffer_data_with_array_buffer_view(
+                        WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
+                        &data,
+                        WebGl2RenderingContext::STATIC_DRAW,
+                    );
+                }
+                IndexData::UnsignedShort(data) => {
+                    let data = js_sys::Uint16Array::view(&data);
+                    gl.buffer_data_with_array_buffer_view(
+                        WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
+                        &data,
+                        WebGl2RenderingContext::STATIC_DRAW,
+                    );
+                }
+                IndexData::UnsignedInt(data) => {
+                    let data = js_sys::Uint32Array::view(&data);
+                    gl.buffer_data_with_array_buffer_view(
+                        WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
+                        &data,
+                        WebGl2RenderingContext::STATIC_DRAW,
+                    );
+                }
+            };
         }
 
-        let number_of_elements = data.len() as u32;
-
-        IndexBuffer {
-            buffer,
-            kind: WebGl2RenderingContext::UNSIGNED_BYTE,
-            count: number_of_elements as i32,
-            offset: 0,
-            number_of_elements,
-        }
-    }
-
-    pub fn u16(gl: &WebGl2RenderingContext, data: &Vec<u16>) -> IndexBuffer {
-        let buffer = gl.create_buffer().unwrap();
-        gl.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&buffer));
-
-        unsafe {
-            let data = js_sys::Uint16Array::view(&data);
-            gl.buffer_data_with_array_buffer_view(
-                WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-                &data,
-                WebGl2RenderingContext::STATIC_DRAW,
-            );
-        }
-
-        let number_of_elements = data.len() as u32;
-
-        IndexBuffer {
-            buffer,
-            kind: WebGl2RenderingContext::UNSIGNED_SHORT,
-            count: number_of_elements as i32,
-            offset: 0,
-            number_of_elements,
-        }
-    }
-
-    pub fn u32(gl: &WebGl2RenderingContext, data: &Vec<u32>) -> IndexBuffer {
-        let buffer = gl.create_buffer().unwrap();
-        gl.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&buffer));
-
-        unsafe {
-            let data = js_sys::Uint32Array::view(&data);
-            gl.buffer_data_with_array_buffer_view(
-                WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-                &data,
-                WebGl2RenderingContext::STATIC_DRAW,
-            );
-        }
-
-        let number_of_elements = data.len() as u32;
-
-        IndexBuffer {
-            buffer,
-            kind: WebGl2RenderingContext::UNSIGNED_INT,
-            count: number_of_elements as i32,
-            offset: 0,
-            number_of_elements,
-        }
+        buffer
     }
 }

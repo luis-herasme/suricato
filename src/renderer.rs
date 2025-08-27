@@ -61,20 +61,24 @@ impl Renderer {
         }
 
         // Set attributes
-        for attribute in &geometry_resource.vertex_buffers {
-            material_resource.set_attribute_buffer(attribute);
+        for (i, buffer) in geometry_resource.vertex_webgl_buffers.iter().enumerate() {
+            let attribute = &geometry.vertex_data[i];
+            material_resource.set_attribute_buffer(attribute, buffer);
         }
 
-        if let Some(indices) = &geometry_resource.index_buffer {
+        if let Some(index_webgl_buffer) = &geometry_resource.index_webgl_buffer {
+            let indices = geometry.indices.as_ref().unwrap();
+
             self.gl.bind_buffer(
                 WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-                Some(&indices.buffer)
+                Some(&index_webgl_buffer)
             );
+
             self.gl.draw_elements_with_i32(
                 WebGl2RenderingContext::TRIANGLES,
-                indices.count,
-                indices.kind,
-                indices.offset
+                indices.layout.count,
+                indices.layout.kind,
+                indices.layout.offset
             );
         } else {
             self.gl.draw_arrays(
