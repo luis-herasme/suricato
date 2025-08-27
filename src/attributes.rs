@@ -5,7 +5,7 @@ use web_sys::{
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy)]
-pub enum ComponentType {
+pub enum AttributeComponentType {
     Byte          = WebGl2RenderingContext::BYTE,
     UnsignedByte  = WebGl2RenderingContext::UNSIGNED_BYTE,
     Short         = WebGl2RenderingContext::SHORT,
@@ -15,16 +15,16 @@ pub enum ComponentType {
     Float         = WebGl2RenderingContext::FLOAT,
 }
 
-impl ComponentType {
+impl AttributeComponentType {
     fn number_of_bytes(&self) -> u8 {
         match &self {
-            ComponentType::Byte => 1,
-            ComponentType::UnsignedByte => 1,
-            ComponentType::Short => 2,
-            ComponentType::UnsignedShort => 2,
-            ComponentType::Int => 4,
-            ComponentType::UnsignedInt => 4,
-            ComponentType::Float => 4,
+            AttributeComponentType::Byte => 1,
+            AttributeComponentType::UnsignedByte => 1,
+            AttributeComponentType::Short => 2,
+            AttributeComponentType::UnsignedShort => 2,
+            AttributeComponentType::Int => 4,
+            AttributeComponentType::UnsignedInt => 4,
+            AttributeComponentType::Float => 4,
         }
     }
 }
@@ -38,7 +38,7 @@ pub struct SingleAttributeBuffer {
     pub name:                   String,
     pub buffer:                 WebGlBuffer,
     pub number_of_components:   i32,
-    pub type_of_the_components: ComponentType,
+    pub type_of_the_components: AttributeComponentType,
     pub normalize:              bool,
     pub stride:                 i32,
     pub offset:                 i32,
@@ -115,7 +115,7 @@ impl SingleAttributeBuffer {
             name,
             buffer,
             number_of_components,
-            type_of_the_components: ComponentType::Float,
+            type_of_the_components: AttributeComponentType::Float,
             normalize: false,
             stride: 0,
             offset: 0,
@@ -169,12 +169,12 @@ impl AttributeData {
         }
     }
 
-    fn component_type(&self) -> ComponentType {
+    fn component_type(&self) -> AttributeComponentType {
         match &self {
-            AttributeData::Float { .. } => ComponentType::Float,
-            AttributeData::Vec2 { .. } => ComponentType::Float,
-            AttributeData::Vec3 { .. } => ComponentType::Float,
-            AttributeData::Vec4 { .. } => ComponentType::Float,
+            AttributeData::Float { .. } => AttributeComponentType::Float,
+            AttributeData::Vec2 { .. } => AttributeComponentType::Float,
+            AttributeData::Vec3 { .. } => AttributeComponentType::Float,
+            AttributeData::Vec4 { .. } => AttributeComponentType::Float,
         }
     }
 
@@ -197,13 +197,11 @@ pub struct InterleavedAttributeBuffer {
     pub description: Vec<AttributeDescription>,
 }
 
-/// Parameters for vertexAttribPointer:
-/// https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/vertexAttribPointer
 #[derive(Debug)]
 pub struct AttributeDescription {
     pub name:                   String,
     pub number_of_components:   i32,
-    pub type_of_the_components: ComponentType,
+    pub type_of_the_components: AttributeComponentType,
     pub normalize:              bool,
     pub stride:                 i32,
     pub offset:                 i32,
