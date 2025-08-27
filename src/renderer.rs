@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use web_sys::wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext};
-use web_sys::{console, wasm_bindgen::JsCast};
 
 use crate::{
     geometry::{Geometry, GeometryResource},
@@ -42,13 +42,10 @@ impl Renderer {
     pub fn render(&mut self, material: &Material, geometry: &Geometry) {
         if !self.materials.contains_key(&material.id) {
             self.create_material_resource(material);
-            console::log_1(&"here 3".into());
         }
 
         if !self.geometries.contains_key(&geometry.id) {
-            console::log_1(&"here 4".into());
             self.create_geometry_resource(geometry);
-console::log_1(&"here 5".into());
         }
 
         let material_resource = self.materials.get(&material.id).unwrap();
