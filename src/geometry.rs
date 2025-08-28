@@ -40,19 +40,19 @@ impl Geometry {
                     (
                         "position".to_string(),
                         VertexData::Vec2(vec![
-                            0.5, 0.5,   // Top right
-                            0.5, -0.5,  // Bottom right
-                            -0.5, -0.5, // Bottom left
-                            -0.5, 0.5,  // Top left
+                            [0.5, 0.5],   // Top right
+                            [0.5, -0.5],  // Bottom right
+                            [-0.5, -0.5], // Bottom left
+                            [-0.5, 0.5],  // Top left
                         ])
                     ),
                     (
                         "color".to_string(),
                         VertexData::Vec3(vec![
-                            1.0, 0.0, 0.0, // Top right
-                            0.0, 1.0, 0.0, // Bottom right
-                            0.0, 0.0, 1.0, // Bottom left
-                            0.0, 1.0, 0.0, // Top left
+                            [1.0, 0.0, 0.0], // Top right
+                            [0.0, 1.0, 0.0], // Bottom right
+                            [0.0, 0.0, 1.0], // Bottom left
+                            [0.0, 1.0, 0.0], // Top left
                         ])
                     )
                 ]
@@ -97,10 +97,10 @@ impl Geometry {
 
     #[rustfmt::skip]
     pub fn instance_quad(count: usize) -> Geometry {
-        let mut trasnforms = Vec::with_capacity(16 * count);
+        let mut trasnforms = Vec::with_capacity(count);
 
         for _ in 0..count {
-            trasnforms.extend(Transform::new().to_array());
+            trasnforms.push(Transform::new().to_array());
         }
 
         let vertex_data = vec![
@@ -109,19 +109,19 @@ impl Geometry {
                     (
                         "position".to_string(),
                         VertexData::Vec2(vec![
-                            0.5, 0.5,   // Top right
-                            0.5, -0.5,  // Bottom right
-                            -0.5, -0.5, // Bottom left
-                            -0.5, 0.5,  // Top left
+                            [0.5, 0.5],   // Top right
+                            [0.5, -0.5],  // Bottom right
+                            [-0.5, -0.5], // Bottom left
+                            [-0.5, 0.5],  // Top left
                         ])
                     ),
                     (
                         "color".to_string(),
                         VertexData::Vec3(vec![
-                            1.0, 0.0, 0.0, // Top right
-                            0.0, 1.0, 0.0, // Bottom right
-                            0.0, 0.0, 1.0, // Bottom left
-                            0.0, 1.0, 0.0, // Top left
+                            [1.0, 0.0, 0.0], // Top right
+                            [0.0, 1.0, 0.0], // Bottom right
+                            [0.0, 0.0, 1.0], // Bottom left
+                            [0.0, 1.0, 0.0], // Top left
                         ])
                     )
                 ]

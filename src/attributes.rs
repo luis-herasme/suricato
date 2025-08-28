@@ -1,7 +1,4 @@
-use web_sys::{
-    WebGl2RenderingContext, WebGlBuffer,
-    js_sys::{self, ArrayBuffer, DataView},
-};
+use web_sys::{WebGl2RenderingContext, WebGlBuffer, js_sys};
 
 use crate::generate_id::generate_id;
 
@@ -41,22 +38,29 @@ pub struct AttributeLayout {
     pub divisor:         u32,
 }
 
+fn to_bytes<T>(slice: &[T]) -> &[u8] {
+    let len = slice.len() * std::mem::size_of::<T>();
+    unsafe {
+        return std::slice::from_raw_parts(slice.as_ptr() as *const u8, len);
+    }
+}
+
 pub enum VertexData {
     Float(Vec<f32>),
-    Vec2(Vec<f32>),
-    Vec3(Vec<f32>),
-    Vec4(Vec<f32>),
-    Mat4(Vec<f32>),
+    Vec2(Vec<[f32; 2]>),
+    Vec3(Vec<[f32; 3]>),
+    Vec4(Vec<[f32; 4]>),
+    Mat4(Vec<[f32; 16]>),
 }
 
 impl VertexData {
     pub fn count(&self) -> usize {
         match &self {
             VertexData::Float(data) => data.len(),
-            VertexData::Vec2(data) => data.len() / 2,
-            VertexData::Vec3(data) => data.len() / 3,
-            VertexData::Vec4(data) => data.len() / 4,
-            VertexData::Mat4(data) => data.len() / 16,
+            VertexData::Vec2(data) => data.len(),
+            VertexData::Vec3(data) => data.len(),
+            VertexData::Vec4(data) => data.len(),
+            VertexData::Mat4(data) => data.len(),
         }
     }
 
@@ -77,6 +81,36 @@ impl VertexData {
             VertexData::Vec3 { .. } => AttributeComponentType::Float,
             VertexData::Vec4 { .. } => AttributeComponentType::Float,
             VertexData::Mat4 { .. } => AttributeComponentType::Float,
+        }
+    }
+
+    fn to_bytes(&self) -> &[u8] {
+        match &self {
+            VertexData::Float(data) => to_bytes(data),
+            VertexData::Vec2(data) => to_bytes(data),
+            VertexData::Vec3(data) => to_bytes(data),
+            VertexData::Vec4(data) => to_bytes(data),
+            VertexData::Mat4(data) => to_bytes(data),
+        }
+    }
+
+    fn write_vertex_bytes(&self, vertex_index: usize, buffer: &mut Vec<u8>) {
+        match self {
+            VertexData::Float(data) => {
+                buffer.extend_from_slice(&data[vertex_index].to_ne_bytes());
+            }
+            VertexData::Vec2(data) => {
+                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+            }
+            VertexData::Vec3(data) => {
+                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+            }
+            VertexData::Vec4(data) => {
+                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+            }
+            VertexData::Mat4(data) => {
+                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+            }
         }
     }
 }
@@ -147,10 +181,7 @@ impl VertexBuffer {
 
             match &mut self.data[attribute_index] {
                 VertexData::Float(data) => data[vertex_index] = value,
-                VertexData::Vec2(data) => data[vertex_index] = value,
-                VertexData::Vec3(data) => data[vertex_index] = value,
-                VertexData::Vec4(data) => data[vertex_index] = value,
-                VertexData::Mat4(data) => data[vertex_index] = value,
+                _ => panic!("Invalid type"),
             };
 
             self.needs_update = true;
@@ -168,11 +199,7 @@ impl VertexBuffer {
 
             match &mut self.data[attribute_index] {
                 VertexData::Mat4(data) => {
-                    let vertex_index = vertex_index * 16;
-
-                    for i in 0..16 {
-                        data[vertex_index + i] = value[i];
-                    }
+                    data[vertex_index] = value;
                 }
                 _ => panic!("Invalid type"),
             };
@@ -185,101 +212,35 @@ impl VertexBuffer {
     }
 
     pub fn update_webgl_buffer(&self, gl: &WebGl2RenderingContext, webgl_buffer: &WebGlBuffer) {
-        if self.data.len() == 1 {
-            self.update_webgl_buffer_single(gl, webgl_buffer);
+        let buffer = if self.data.len() == 1 {
+            self.data[0].to_bytes()
         } else {
-            self.update_webgl_buffer_interleaved(gl, webgl_buffer);
-        }
-    }
-
-    pub fn update_webgl_buffer_single(&self, gl: &WebGl2RenderingContext, webgl_buffer: &WebGlBuffer) {
-        match &self.data[0] {
-            VertexData::Float(data) => VertexBuffer::set_float_buffer(gl, webgl_buffer, data),
-            VertexData::Vec2(data) => VertexBuffer::set_float_buffer(gl, webgl_buffer, data),
-            VertexData::Vec3(data) => VertexBuffer::set_float_buffer(gl, webgl_buffer, data),
-            VertexData::Vec4(data) => VertexBuffer::set_float_buffer(gl, webgl_buffer, data),
-            VertexData::Mat4(data) => VertexBuffer::set_float_buffer(gl, webgl_buffer, data),
+            &self.build_bytes_buffer()
         };
+
+        VertexBuffer::set_buffer(gl, webgl_buffer, buffer);
     }
 
-    pub fn update_webgl_buffer_interleaved(&self, gl: &WebGl2RenderingContext, webgl_buffer: &WebGlBuffer) {
-        let attribute_data = self.data.get(0).unwrap();
-        let attribute_layout = self.layout.get(0).unwrap();
+    pub fn build_bytes_buffer(&self) -> Vec<u8> {
+        let vertex_count = self.data.get(0).unwrap().count();
+        let stride = self.layout.get(0).unwrap().stride as usize;
 
-        let stride = attribute_layout.stride;
-        let buffer_size = stride as u32 * attribute_data.count() as u32;
+        let mut buffer = Vec::with_capacity(stride * vertex_count);
 
-        let array_buffer = ArrayBuffer::new(buffer_size);
-        let data_view = DataView::new(&array_buffer, 0, buffer_size as usize);
-
-        for vertex_index in 0..attribute_data.count() {
-            for (attribute_index, attribute_data) in self.data.iter().enumerate() {
-                let attribute_description = &self.layout[attribute_index];
-                let offset = stride as usize * vertex_index + attribute_description.offset as usize;
-
-                match attribute_data {
-                    VertexData::Float(data) => {
-                        let value = data[vertex_index];
-                        data_view.set_float32_endian(offset, value, true);
-                    }
-                    VertexData::Vec2(data) => {
-                        let vertex_index = vertex_index * 2;
-
-                        let value_0 = data[vertex_index];
-                        let value_1 = data[vertex_index + 1];
-
-                        data_view.set_float32_endian(offset, value_0, true);
-                        data_view.set_float32_endian(offset + 4, value_1, true);
-                    }
-                    VertexData::Vec3(data) => {
-                        let vertex_index = vertex_index * 3;
-
-                        let value_0 = data[vertex_index];
-                        let value_1 = data[vertex_index + 1];
-                        let value_2 = data[vertex_index + 2];
-
-                        data_view.set_float32_endian(offset, value_0, true);
-                        data_view.set_float32_endian(offset + 4, value_1, true);
-                        data_view.set_float32_endian(offset + 8, value_2, true);
-                    }
-                    VertexData::Vec4(data) => {
-                        let vertex_index = vertex_index * 4;
-
-                        let value_0 = data[vertex_index];
-                        let value_1 = data[vertex_index + 1];
-                        let value_2 = data[vertex_index + 2];
-                        let value_3 = data[vertex_index + 3];
-
-                        data_view.set_float32_endian(offset, value_0, true);
-                        data_view.set_float32_endian(offset + 4, value_1, true);
-                        data_view.set_float32_endian(offset + 8, value_2, true);
-                        data_view.set_float32_endian(offset + 12, value_3, true);
-                    }
-                    VertexData::Mat4(data) => {
-                        let vertex_index = vertex_index * 4;
-
-                        for i in 0..16 {
-                            data_view.set_float32_endian(offset + 4 * i, data[vertex_index + i], true)
-                        }
-                    }
-                }
+        for vertex_index in 0..vertex_count {
+            for attribute_data in self.data.iter() {
+                attribute_data.write_vertex_bytes(vertex_index, &mut buffer);
             }
         }
 
-        gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
-
-        gl.buffer_data_with_array_buffer_view(
-            WebGl2RenderingContext::ARRAY_BUFFER,
-            &js_sys::Uint8Array::new(&array_buffer),
-            WebGl2RenderingContext::STATIC_DRAW,
-        );
+        buffer
     }
 
-    fn set_float_buffer(gl: &WebGl2RenderingContext, webgl_buffer: &WebGlBuffer, data: &Vec<f32>) {
+    fn set_buffer(gl: &WebGl2RenderingContext, webgl_buffer: &WebGlBuffer, bytes: &[u8]) {
         gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
 
         unsafe {
-            let data = js_sys::Float32Array::view(&data);
+            let data = js_sys::Uint8Array::view(bytes);
             gl.buffer_data_with_array_buffer_view(WebGl2RenderingContext::ARRAY_BUFFER, &data, WebGl2RenderingContext::STATIC_DRAW);
         }
     }
