@@ -78,12 +78,22 @@ impl Renderer {
                 Some(&index_webgl_buffer)
             );
 
-            self.gl.draw_elements_with_i32(
-                WebGl2RenderingContext::TRIANGLES,
-                indices.layout.count,
-                indices.layout.kind,
-                indices.layout.offset
-            );
+            if let Some(instance_count) = geometry.instance_count {
+                self.gl.draw_elements_instanced_with_i32(
+                    WebGl2RenderingContext::TRIANGLES, 
+                    indices.layout.count,
+                    indices.layout.kind,
+                    indices.layout.offset,
+                    instance_count as i32
+                );
+            } else {
+                self.gl.draw_elements_with_i32(
+                    WebGl2RenderingContext::TRIANGLES,
+                    indices.layout.count,
+                    indices.layout.kind,
+                    indices.layout.offset
+                );
+            }
         } else {
             self.gl.draw_arrays(
                 WebGl2RenderingContext::TRIANGLES,

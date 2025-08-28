@@ -18,7 +18,7 @@ pub enum AttributeComponentType {
 }
 
 impl AttributeComponentType {
-    fn number_of_bytes(&self) -> u8 {
+    pub fn number_of_bytes(&self) -> u8 {
         match &self {
             AttributeComponentType::Byte => 1,
             AttributeComponentType::UnsignedByte => 1,
@@ -38,6 +38,7 @@ pub struct AttributeLayout {
     pub normalize:       bool,
     pub stride:          u8,
     pub offset:          u8,
+    pub divisor:         u32,
 }
 
 pub enum VertexData {
@@ -45,6 +46,7 @@ pub enum VertexData {
     Vec2(Vec<f32>),
     Vec3(Vec<f32>),
     Vec4(Vec<f32>),
+    Mat4(Vec<f32>),
 }
 
 impl VertexData {
@@ -54,6 +56,7 @@ impl VertexData {
             VertexData::Vec2(data) => data.len() / 2,
             VertexData::Vec3(data) => data.len() / 3,
             VertexData::Vec4(data) => data.len() / 4,
+            VertexData::Mat4(data) => data.len() / 16,
         }
     }
 
@@ -63,6 +66,7 @@ impl VertexData {
             VertexData::Vec2 { .. } => 2,
             VertexData::Vec3 { .. } => 3,
             VertexData::Vec4 { .. } => 4,
+            VertexData::Mat4 { .. } => 16,
         }
     }
 
@@ -72,6 +76,7 @@ impl VertexData {
             VertexData::Vec2 { .. } => AttributeComponentType::Float,
             VertexData::Vec3 { .. } => AttributeComponentType::Float,
             VertexData::Vec4 { .. } => AttributeComponentType::Float,
+            VertexData::Mat4 { .. } => AttributeComponentType::Float,
         }
     }
 }
@@ -92,6 +97,26 @@ impl VertexBuffer {
             normalize:       false,
             stride:          0,
             offset:          0,
+            divisor:         0,
+        };
+
+        VertexBuffer {
+            id:           generate_id(),
+            needs_update: true,
+            data:         vec![data],
+            layout:       vec![layout],
+        }
+    }
+
+    pub fn single_attribute_with_divisor(name: &str, data: VertexData, divisor: u32) -> VertexBuffer {
+        let layout = AttributeLayout {
+            name: String::from(name),
+            component_count: data.number_of_components(),
+            component_type: data.component_type(),
+            normalize: false,
+            stride: 0,
+            offset: 0,
+            divisor,
         };
 
         VertexBuffer {
@@ -125,6 +150,31 @@ impl VertexBuffer {
                 VertexData::Vec2(data) => data[vertex_index] = value,
                 VertexData::Vec3(data) => data[vertex_index] = value,
                 VertexData::Vec4(data) => data[vertex_index] = value,
+                VertexData::Mat4(data) => data[vertex_index] = value,
+            };
+
+            self.needs_update = true;
+            return true;
+        }
+
+        false
+    }
+
+    pub fn set_vertex_at_mat4(&mut self, name: &str, vertex_index: usize, value: [f32; 16]) -> bool {
+        for attribute_index in 0..self.data.len() {
+            if self.layout[attribute_index].name != name {
+                continue;
+            }
+
+            match &mut self.data[attribute_index] {
+                VertexData::Mat4(data) => {
+                    let vertex_index = vertex_index * 16;
+
+                    for i in 0..16 {
+                        data[vertex_index + i] = value[i];
+                    }
+                }
+                _ => panic!("Invalid type"),
             };
 
             self.needs_update = true;
@@ -148,6 +198,7 @@ impl VertexBuffer {
             VertexData::Vec2(data) => VertexBuffer::set_float_buffer(gl, webgl_buffer, data),
             VertexData::Vec3(data) => VertexBuffer::set_float_buffer(gl, webgl_buffer, data),
             VertexData::Vec4(data) => VertexBuffer::set_float_buffer(gl, webgl_buffer, data),
+            VertexData::Mat4(data) => VertexBuffer::set_float_buffer(gl, webgl_buffer, data),
         };
     }
 
@@ -204,6 +255,13 @@ impl VertexBuffer {
                         data_view.set_float32_endian(offset + 8, value_2, true);
                         data_view.set_float32_endian(offset + 12, value_3, true);
                     }
+                    VertexData::Mat4(data) => {
+                        let vertex_index = vertex_index * 4;
+
+                        for i in 0..16 {
+                            data_view.set_float32_endian(offset + 4 * i, data[vertex_index + i], true)
+                        }
+                    }
                 }
             }
         }
@@ -238,6 +296,7 @@ impl VertexBuffer {
                 normalize:       false,
                 offset:          offset,
                 stride:          0, // Will be populated after the loop
+                divisor:         0,
             };
 
             offset += attribute.number_of_components() * attribute.component_type().number_of_bytes();
