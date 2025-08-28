@@ -98,7 +98,7 @@ impl Renderer {
             self.gl.draw_arrays(
                 WebGl2RenderingContext::TRIANGLES,
                 0,
-                geometry.vertex_count
+                geometry.vertex_count as i32
             );
         }
     }

@@ -6,7 +6,7 @@ use crate::{
 
 pub struct Geometry {
     pub instance_count: Option<usize>,
-    pub vertex_count:   i32,
+    pub vertex_count:   usize,
     pub indices:        Option<IndexBuffer>,
     pub vertex_buffers: Vec<VertexBuffer>,
 }
@@ -76,7 +76,7 @@ impl Geometry {
         ];
 
         let vertex_count = match vertex_data.get(0) {
-            Some(attribute) => attribute.vertex_count() as i32,
+            Some(attribute) => attribute.vertex_count(),
             None => 0
         };
 
@@ -133,7 +133,7 @@ impl Geometry {
         ];
 
         let vertex_count = match vertex_data.get(0) {
-            Some(attribute) => attribute.vertex_count() as i32,
+            Some(attribute) => attribute.vertex_count(),
             None => 0
         };
 
