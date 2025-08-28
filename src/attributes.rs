@@ -60,7 +60,7 @@ impl VertexData {
         }
     }
 
-    fn number_of_components(&self) -> u8 {
+    fn component_count(&self) -> u8 {
         match &self {
             VertexData::Float { .. } => 1,
             VertexData::Vec2 { .. } => 2,
@@ -92,7 +92,7 @@ impl VertexBuffer {
     pub fn single_attribute(name: &str, data: VertexData) -> VertexBuffer {
         let layout = AttributeLayout {
             name:            String::from(name),
-            component_count: data.number_of_components(),
+            component_count: data.component_count(),
             component_type:  data.component_type(),
             normalize:       false,
             stride:          0,
@@ -110,13 +110,13 @@ impl VertexBuffer {
 
     pub fn single_attribute_with_divisor(name: &str, data: VertexData, divisor: u32) -> VertexBuffer {
         let layout = AttributeLayout {
-            name: String::from(name),
-            component_count: data.number_of_components(),
-            component_type: data.component_type(),
-            normalize: false,
-            stride: 0,
-            offset: 0,
-            divisor,
+            name:            String::from(name),
+            component_count: data.component_count(),
+            component_type:  data.component_type(),
+            normalize:       false,
+            stride:          0,
+            offset:          0,
+            divisor:         divisor,
         };
 
         VertexBuffer {
@@ -290,8 +290,8 @@ impl VertexBuffer {
 
         for (name, attribute) in attributes {
             let layout = AttributeLayout {
-                name:            name.to_string(),
-                component_count: attribute.number_of_components(),
+                name:            String::from(name),
+                component_count: attribute.component_count(),
                 component_type:  attribute.component_type(),
                 normalize:       false,
                 offset:          offset,
@@ -299,7 +299,7 @@ impl VertexBuffer {
                 divisor:         0,
             };
 
-            offset += attribute.number_of_components() * attribute.component_type().number_of_bytes();
+            offset += attribute.component_count() * attribute.component_type().number_of_bytes();
             attribute_layout_array.push(layout);
         }
 
