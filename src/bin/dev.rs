@@ -13,7 +13,7 @@ in mat4 transform;
 out vec4 v_color;
 
 void main() {
-    v_color =  vec4(color, 1.0) ;
+    v_color = vec4(color, 1.0);
     gl_Position = transform * vec4(position, 0.0, 1.0);
 }
 "#;
@@ -30,24 +30,23 @@ void main() {
 
     let mut renderer = Renderer::new();
 
-    let mut material = Material::new(vertex_shader_source, fragment_shader_source);
-
     let size = 20;
-    let mut geometry = Geometry::instance_quad(size * size);
 
+    let mut material = Material::new(vertex_shader_source, fragment_shader_source);
+    let mut geometry = Geometry::instance_quad(size * size);
     let mut transforms = Vec::new();
 
     for x in 0..size {
         for y in 0..size {
             let mut transform = Transform::new();
             transform.scale *= 0.05;
-            transform.translation.x = 1.5 * (x as f32 - size as f32 / 2.0) / size as f32;
-            transform.translation.y = 1.5 * (y as f32 - size as f32 / 2.0) / size as f32;
+            transform.translation.x = (x as f32 - size as f32 / 2.0) / size as f32;
+            transform.translation.y = (y as f32 - size as f32 / 2.0) / size as f32;
             transforms.push(transform);
         }
     }
 
-    let callback = Closure::wrap(Box::new(move || {
+    let render_loop = Closure::wrap(Box::new(move || {
         renderer.clear();
 
         for (i, transform) in transforms.iter_mut().enumerate() {
@@ -60,10 +59,10 @@ void main() {
 
     web_sys::window()
         .unwrap()
-        .set_interval_with_callback_and_timeout_and_arguments_0(callback.as_ref().unchecked_ref(), 1)
+        .set_interval_with_callback_and_timeout_and_arguments_0(render_loop.as_ref().unchecked_ref(), 1)
         .unwrap();
 
-    callback.forget();
+    render_loop.forget();
 }
 
 // use glam::Quat;
