@@ -4,75 +4,63 @@ use crate::{
 };
 
 pub struct Geometry {
-    pub vertex_count: i32,
-    pub indices:      Option<IndexBuffer>,
-    pub vertex_data:  Vec<VertexBuffer>,
+    pub vertex_count:   i32,
+    pub indices:        Option<IndexBuffer>,
+    pub vertex_buffers: Vec<VertexBuffer>,
 }
 
 impl Geometry {
     pub fn set_vertex_at_f32(&mut self, name: &str, index: usize, value: f32) {
-        for vertex_data in &mut self.vertex_data {
-            match vertex_data {
-                VertexBuffer::InterleavedAttributes(attributes) => {
-                    let value_was_set = attributes.set_vertex_at_f32(name, index, value);
+        for vertex_buffer in &mut self.vertex_buffers {
+            let value_was_set = vertex_buffer.set_vertex_at_f32(name, index, value);
 
-                    if value_was_set {
-                        return;
-                    }
-                }
-                VertexBuffer::SingleAttribute(attribute) => {
-                    if attribute.layout.name != name {
-                        continue;
-                    }
-
-                    attribute.set_vertex_at_f32(index, value);
-                    attribute.needs_update = true;
-                }
-            };
+            if value_was_set {
+                return;
+            }
         }
     }
 
     #[rustfmt::skip]
     pub fn quad() -> Geometry {
         let vertex_data = vec![
-            // VertexBuffer::interleaved_attributes(
-            //     vec![
-            //         (
-            //             "position".to_string(),
-            //             VertexData::Vec2(vec![
-            //                 0.5, 0.5,   // Top right
-            //                 0.5, -0.5,  // Bottom right
-            //                 -0.5, -0.5, // Bottom left
-            //                 -0.5, 0.5,  // Top left
-            //             ])
-            //         ),
-            //         (
-            //             "color".to_string(),
-            //             VertexData::Vec3(vec![
-            //                 1.0, 0.0, 0.0, // Top right
-            //                 0.0, 1.0, 0.0, // Bottom right
-            //                 0.0, 0.0, 1.0, // Bottom left
-            //                 0.0, 1.0, 0.0, // Top left
-            //             ])
-            //         )
-            //     ]
-            // )
-            VertexBuffer::single_attribute("position",
-                VertexData::Vec2(vec![
-                    0.5, 0.5,   // Top right
-                    0.5, -0.5,  // Bottom right
-                    -0.5, -0.5, // Bottom left
-                    -0.5, 0.5,  // Top left
-                ])
-            ),
-            VertexBuffer::single_attribute("color",
-                VertexData::Vec3(vec![
-                    1.0, 0.0, 0.0, // Top right
-                    0.0, 1.0, 0.0, // Bottom right
-                    0.0, 0.0, 1.0, // Bottom left
-                    0.0, 1.0, 0.0, // Top left
-                ])
-            ),
+            VertexBuffer::interleaved_attributes(
+                vec![
+                    (
+                        "position".to_string(),
+                        VertexData::Vec2(vec![
+                            0.5, 0.5,   // Top right
+                            0.5, -0.5,  // Bottom right
+                            -0.5, -0.5, // Bottom left
+                            -0.5, 0.5,  // Top left
+                        ])
+                    ),
+                    (
+                        "color".to_string(),
+                        VertexData::Vec3(vec![
+                            1.0, 0.0, 0.0, // Top right
+                            0.0, 1.0, 0.0, // Bottom right
+                            0.0, 0.0, 1.0, // Bottom left
+                            0.0, 1.0, 0.0, // Top left
+                        ])
+                    )
+                ]
+            )
+            // VertexBuffer::single_attribute("position",
+            //     VertexData::Vec2(vec![
+            //         0.5, 0.5,   // Top right
+            //         0.5, -0.5,  // Bottom right
+            //         -0.5, -0.5, // Bottom left
+            //         -0.5, 0.5,  // Top left
+            //     ])
+            // ),
+            // VertexBuffer::single_attribute("color",
+            //     VertexData::Vec3(vec![
+            //         1.0, 0.0, 0.0, // Top right
+            //         0.0, 1.0, 0.0, // Bottom right
+            //         0.0, 0.0, 1.0, // Bottom left
+            //         0.0, 1.0, 0.0, // Top left
+            //     ])
+            // ),
         ];
 
         let vertex_count = match vertex_data.get(0) {
@@ -82,7 +70,7 @@ impl Geometry {
 
         Geometry {
             vertex_count,
-            vertex_data,
+            vertex_buffers: vertex_data,
             indices: Some(
                 IndexBuffer::new(
                     IndexData::UnsignedByte(vec![

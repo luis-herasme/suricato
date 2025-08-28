@@ -1,11 +1,7 @@
 use std::collections::HashMap;
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
-use crate::{
-    attributes::{InterleavedAttributesVertexBuffer, SingleAttributeVertexBuffer, VertexBuffer},
-    generate_id::generate_id,
-    uniforms::Uniform,
-};
+use crate::{attributes::VertexBuffer, generate_id::generate_id, uniforms::Uniform};
 
 pub struct Material {
     pub id:                 u64,
@@ -128,28 +124,7 @@ impl MaterialResource {
     }
 
     /// ATTRIBUTES
-    pub fn set_attribute_buffer(&self, vertex_data: &VertexBuffer, buffer: &WebGlBuffer) {
-        match vertex_data {
-            VertexBuffer::SingleAttribute(attribute) => self.set_single_attribute_buffer(attribute, buffer),
-            VertexBuffer::InterleavedAttributes(attribute) => self.set_interleaved_attribute_buffer(attribute, buffer),
-        }
-    }
-
-    fn set_single_attribute_buffer(&self, attribute: &SingleAttributeVertexBuffer, buffer: &WebGlBuffer) {
-        let location = self.attribute_locations.get(&attribute.layout.name).unwrap();
-        self.gl.enable_vertex_attrib_array(*location);
-        self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(buffer));
-        self.gl.vertex_attrib_pointer_with_i32(
-            *location,
-            attribute.layout.component_count,
-            attribute.layout.component_type as u32,
-            attribute.layout.normalize,
-            attribute.layout.stride,
-            attribute.layout.offset,
-        )
-    }
-
-    fn set_interleaved_attribute_buffer(&self, attributes: &InterleavedAttributesVertexBuffer, buffer: &WebGlBuffer) {
+    pub fn set_attribute_buffer(&self, attributes: &VertexBuffer, buffer: &WebGlBuffer) {
         self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
 
         for attribute in &attributes.layout {
@@ -157,11 +132,11 @@ impl MaterialResource {
             self.gl.enable_vertex_attrib_array(*location);
             self.gl.vertex_attrib_pointer_with_i32(
                 *location,
-                attribute.component_count,
+                attribute.component_count as i32,
                 attribute.component_type as u32,
                 attribute.normalize,
-                attribute.stride,
-                attribute.offset,
+                attribute.stride as i32,
+                attribute.offset as i32,
             )
         }
     }

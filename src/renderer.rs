@@ -63,8 +63,8 @@ impl Renderer {
         }
 
         // Set attributes
-        for vertex_data in &geometry.vertex_data {
-            let buffer = self.webgl_buffers.get(&vertex_data.id()).unwrap(); // Created at create_geometry_resource
+        for vertex_data in &geometry.vertex_buffers {
+            let buffer = self.webgl_buffers.get(&vertex_data.id).unwrap(); // Created at create_geometry_resource
             material_resource.set_attribute_buffer(vertex_data, buffer);
         }
 
@@ -99,18 +99,16 @@ impl Renderer {
     }
 
     fn create_geometry_resource(&mut self, geometry: &mut Geometry) {
-        for vertex_data in &mut geometry.vertex_data {
-            let id = vertex_data.id();
-
-            if !self.webgl_buffers.contains_key(&id) {
+        for vertex_data in &mut geometry.vertex_buffers {
+            if !self.webgl_buffers.contains_key(&vertex_data.id) {
                 let webgl_buffer = self.gl.create_buffer().unwrap();
-                self.webgl_buffers.insert(id, webgl_buffer);
+                self.webgl_buffers.insert(vertex_data.id, webgl_buffer);
             }
 
-            if vertex_data.needs_update() {
-                let webgl_buffer = self.webgl_buffers.get(&vertex_data.id()).unwrap();
+            if vertex_data.needs_update {
+                let webgl_buffer = self.webgl_buffers.get(&vertex_data.id).unwrap();
                 vertex_data.update_webgl_buffer(&self.gl, &webgl_buffer);
-                vertex_data.set_needs_update(false);
+                vertex_data.needs_update = false;
             }
         }
 
