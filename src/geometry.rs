@@ -1,5 +1,5 @@
 use crate::{
-    attributes::{VertexBuffer, VertexData},
+    vertex_buffer::{VertexBuffer, VertexData},
     index_buffer::{IndexBuffer, IndexData},
     transform::Transform,
 };

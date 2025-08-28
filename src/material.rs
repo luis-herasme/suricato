@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
-use crate::{attributes::VertexBuffer, generate_id::generate_id, uniforms::Uniform};
+use crate::{vertex_buffer::VertexBuffer, generate_id::generate_id, uniforms::Uniform};
 
 pub struct Material {
     pub id:                 u64,
@@ -152,8 +152,8 @@ impl MaterialResource {
                         4,
                         attribute.component_type as u32,
                         attribute.normalize,
-                        (attribute.component_count * attribute.component_type.number_of_bytes()) as i32,
-                        (i as u8 * 4 * attribute.component_type.number_of_bytes()) as i32,
+                        (attribute.component_count * attribute.component_type.size_in_bytes()) as i32,
+                        (i as u8 * 4 * attribute.component_type.size_in_bytes()) as i32,
                     );
 
                     if attribute.divisor != 0 {

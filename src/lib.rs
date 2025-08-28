@@ -1,4 +1,4 @@
-pub mod attributes;
+pub mod vertex_buffer;
 pub mod generate_id;
 pub mod geometry;
 pub mod index_buffer;

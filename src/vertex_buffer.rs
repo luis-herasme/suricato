@@ -4,7 +4,7 @@ use crate::generate_id::generate_id;
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy)]
-pub enum AttributeComponentType {
+pub enum VertexComponentType {
     Byte          = WebGl2RenderingContext::BYTE,
     UnsignedByte  = WebGl2RenderingContext::UNSIGNED_BYTE,
     Short         = WebGl2RenderingContext::SHORT,
@@ -14,24 +14,24 @@ pub enum AttributeComponentType {
     Float         = WebGl2RenderingContext::FLOAT,
 }
 
-impl AttributeComponentType {
-    pub fn number_of_bytes(&self) -> u8 {
+impl VertexComponentType {
+    pub fn size_in_bytes(&self) -> u8 {
         match &self {
-            AttributeComponentType::Byte => 1,
-            AttributeComponentType::UnsignedByte => 1,
-            AttributeComponentType::Short => 2,
-            AttributeComponentType::UnsignedShort => 2,
-            AttributeComponentType::Int => 4,
-            AttributeComponentType::UnsignedInt => 4,
-            AttributeComponentType::Float => 4,
+            VertexComponentType::Byte => 1,
+            VertexComponentType::UnsignedByte => 1,
+            VertexComponentType::Short => 2,
+            VertexComponentType::UnsignedShort => 2,
+            VertexComponentType::Int => 4,
+            VertexComponentType::UnsignedInt => 4,
+            VertexComponentType::Float => 4,
         }
     }
 }
 
-pub struct AttributeLayout {
+pub struct VertexLayout {
     pub name:            String,
     pub component_count: u8,
-    pub component_type:  AttributeComponentType,
+    pub component_type:  VertexComponentType,
     pub normalize:       bool,
     pub stride:          u8,
     pub offset:          u8,
@@ -74,13 +74,13 @@ impl VertexData {
         }
     }
 
-    fn component_type(&self) -> AttributeComponentType {
+    fn component_type(&self) -> VertexComponentType {
         match &self {
-            VertexData::Float { .. } => AttributeComponentType::Float,
-            VertexData::Vec2 { .. } => AttributeComponentType::Float,
-            VertexData::Vec3 { .. } => AttributeComponentType::Float,
-            VertexData::Vec4 { .. } => AttributeComponentType::Float,
-            VertexData::Mat4 { .. } => AttributeComponentType::Float,
+            VertexData::Float { .. } => VertexComponentType::Float,
+            VertexData::Vec2 { .. } => VertexComponentType::Float,
+            VertexData::Vec3 { .. } => VertexComponentType::Float,
+            VertexData::Vec4 { .. } => VertexComponentType::Float,
+            VertexData::Mat4 { .. } => VertexComponentType::Float,
         }
     }
 
@@ -119,12 +119,12 @@ pub struct VertexBuffer {
     pub id:           u64,
     pub needs_update: bool,
     pub data:         Vec<VertexData>,
-    pub layout:       Vec<AttributeLayout>,
+    pub layout:       Vec<VertexLayout>,
 }
 
 impl VertexBuffer {
     pub fn single_attribute(name: &str, data: VertexData) -> VertexBuffer {
-        let layout = AttributeLayout {
+        let layout = VertexLayout {
             name:            String::from(name),
             component_count: data.component_count(),
             component_type:  data.component_type(),
@@ -143,7 +143,7 @@ impl VertexBuffer {
     }
 
     pub fn single_attribute_with_divisor(name: &str, data: VertexData, divisor: u32) -> VertexBuffer {
-        let layout = AttributeLayout {
+        let layout = VertexLayout {
             name:            String::from(name),
             component_count: data.component_count(),
             component_type:  data.component_type(),
@@ -222,8 +222,8 @@ impl VertexBuffer {
     }
 
     pub fn build_bytes_buffer(&self) -> Vec<u8> {
-        let vertex_count = self.data.get(0).unwrap().count();
-        let stride = self.layout.get(0).unwrap().stride as usize;
+        let vertex_count = self.data[0].count();
+        let stride = self.layout[0].stride as usize;
 
         let mut buffer = Vec::with_capacity(stride * vertex_count);
 
@@ -245,12 +245,12 @@ impl VertexBuffer {
         }
     }
 
-    fn attribute_data_array_to_attribute_layout_array(attributes: &Vec<(String, VertexData)>) -> Vec<AttributeLayout> {
+    fn attribute_data_array_to_attribute_layout_array(attributes: &Vec<(String, VertexData)>) -> Vec<VertexLayout> {
         let mut attribute_layout_array = Vec::new();
         let mut offset = 0;
 
         for (name, attribute) in attributes {
-            let layout = AttributeLayout {
+            let layout = VertexLayout {
                 name:            String::from(name),
                 component_count: attribute.component_count(),
                 component_type:  attribute.component_type(),
@@ -260,7 +260,7 @@ impl VertexBuffer {
                 divisor:         0,
             };
 
-            offset += attribute.component_count() * attribute.component_type().number_of_bytes();
+            offset += attribute.component_count() * attribute.component_type().size_in_bytes();
             attribute_layout_array.push(layout);
         }
 
