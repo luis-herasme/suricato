@@ -1,7 +1,7 @@
 use crate::{
-    vertex_buffer::{VertexBuffer, VertexData},
     index_buffer::{IndexBuffer, IndexData},
     transform::Transform,
+    vertex_buffer::{VertexBuffer, VertexData},
 };
 
 pub struct Geometry {
@@ -76,7 +76,7 @@ impl Geometry {
         ];
 
         let vertex_count = match vertex_data.get(0) {
-            Some(attribute) => attribute.vertex_count(),
+            Some(attribute) => attribute.count,
             None => 0
         };
 
@@ -133,7 +133,7 @@ impl Geometry {
         ];
 
         let vertex_count = match vertex_data.get(0) {
-            Some(attribute) => attribute.vertex_count(),
+            Some(attribute) => attribute.count,
             None => 0
         };
 

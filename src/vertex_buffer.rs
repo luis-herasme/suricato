@@ -1,4 +1,4 @@
-use web_sys::{WebGl2RenderingContext, WebGlBuffer, js_sys};
+use web_sys::WebGl2RenderingContext;
 
 use crate::generate_id::generate_id;
 
@@ -36,6 +36,35 @@ pub struct VertexLayout {
     pub stride:          u8,
     pub offset:          u8,
     pub divisor:         u32,
+}
+
+impl VertexLayout {
+    fn from_vertex_data_array(vertex_data: &Vec<(String, VertexData)>) -> Vec<VertexLayout> {
+        let mut vertex_layouts = Vec::new();
+        let mut offset = 0;
+
+        for (name, vertex_data) in vertex_data {
+            let layout = VertexLayout {
+                name:            String::from(name),
+                component_count: vertex_data.component_count(),
+                component_type:  vertex_data.component_type(),
+                normalize:       false,
+                offset:          offset,
+                stride:          0, // Will be populated after the loop
+                divisor:         0,
+            };
+
+            offset += vertex_data.component_count() * vertex_data.component_type().size_in_bytes();
+            vertex_layouts.push(layout);
+        }
+
+        // After the previous loop, offset will be equal to the stride
+        for vertex_layout in &mut vertex_layouts {
+            vertex_layout.stride = offset;
+        }
+
+        vertex_layouts
+    }
 }
 
 fn to_bytes<T>(slice: &[T]) -> &[u8] {
@@ -84,13 +113,13 @@ impl VertexData {
         }
     }
 
-    fn to_bytes(&self) -> &[u8] {
+    fn to_bytes(&self) -> Vec<u8> {
         match &self {
-            VertexData::Float(data) => to_bytes(data),
-            VertexData::Vec2(data) => to_bytes(data),
-            VertexData::Vec3(data) => to_bytes(data),
-            VertexData::Vec4(data) => to_bytes(data),
-            VertexData::Mat4(data) => to_bytes(data),
+            VertexData::Float(data) => to_bytes(data).to_vec(),
+            VertexData::Vec2(data) => to_bytes(data).to_vec(),
+            VertexData::Vec3(data) => to_bytes(data).to_vec(),
+            VertexData::Vec4(data) => to_bytes(data).to_vec(),
+            VertexData::Mat4(data) => to_bytes(data).to_vec(),
         }
     }
 
@@ -117,9 +146,10 @@ impl VertexData {
 
 pub struct VertexBuffer {
     pub id:           u64,
-    pub needs_update: bool,
-    pub data:         Vec<VertexData>,
+    pub count:        usize,
+    pub data:         Vec<u8>,
     pub layout:       Vec<VertexLayout>,
+    pub needs_update: bool,
 }
 
 impl VertexBuffer {
@@ -129,7 +159,7 @@ impl VertexBuffer {
             component_count: data.component_count(),
             component_type:  data.component_type(),
             normalize:       false,
-            stride:          0,
+            stride:          data.component_count() * data.component_type().size_in_bytes(),
             offset:          0,
             divisor:         0,
         };
@@ -137,7 +167,8 @@ impl VertexBuffer {
         VertexBuffer {
             id:           generate_id(),
             needs_update: true,
-            data:         vec![data],
+            count:        data.count(),
+            data:         data.to_bytes(),
             layout:       vec![layout],
         }
     }
@@ -148,7 +179,7 @@ impl VertexBuffer {
             component_count: data.component_count(),
             component_type:  data.component_type(),
             normalize:       false,
-            stride:          0,
+            stride:          data.component_count() * data.component_type().size_in_bytes(),
             offset:          0,
             divisor:         divisor,
         };
@@ -156,127 +187,72 @@ impl VertexBuffer {
         VertexBuffer {
             id:           generate_id(),
             needs_update: true,
-            data:         vec![data],
+            count:        data.count(),
+            data:         data.to_bytes(),
             layout:       vec![layout],
         }
     }
 
     pub fn interleaved_attributes(data: Vec<(String, VertexData)>) -> VertexBuffer {
-        let layout = VertexBuffer::attribute_data_array_to_attribute_layout_array(&data);
-        let data = data.into_iter().map(|x| x.1).collect();
+        let layout = VertexLayout::from_vertex_data_array(&data);
+
+        let data: Vec<VertexData> = data.into_iter().map(|x| x.1).collect();
+        let count = data[0].count();
+        let data = VertexBuffer::array_to_bytes(&data, &layout);
 
         VertexBuffer {
             id: generate_id(),
             needs_update: true,
+            count,
             data,
             layout,
         }
     }
 
-    pub fn set_vertex_at_f32(&mut self, name: &str, vertex_index: usize, value: f32) -> bool {
-        for attribute_index in 0..self.data.len() {
-            if self.layout[attribute_index].name != name {
+    pub fn set_vertex_at_f32(&mut self, name: &str, index: usize, value: f32) -> bool {
+        for layout in &self.layout {
+            if layout.name != name {
                 continue;
             }
 
-            match &mut self.data[attribute_index] {
-                VertexData::Float(data) => data[vertex_index] = value,
-                _ => panic!("Invalid type"),
-            };
-
+            let byte_index = index * layout.stride as usize + layout.offset as usize;
+            self.data[byte_index..byte_index + 4].copy_from_slice(&value.to_ne_bytes());
             self.needs_update = true;
+
             return true;
         }
 
         false
     }
 
-    pub fn set_vertex_at_mat4(&mut self, name: &str, vertex_index: usize, value: [f32; 16]) -> bool {
-        for attribute_index in 0..self.data.len() {
-            if self.layout[attribute_index].name != name {
+    pub fn set_vertex_at_mat4(&mut self, name: &str, index: usize, value: [f32; 16]) -> bool {
+        for layout in &self.layout {
+            if layout.name != name {
                 continue;
             }
 
-            match &mut self.data[attribute_index] {
-                VertexData::Mat4(data) => {
-                    data[vertex_index] = value;
-                }
-                _ => panic!("Invalid type"),
-            };
-
+            let byte_index = index * layout.stride as usize + layout.offset as usize;
+            self.data[byte_index..byte_index + 64].copy_from_slice(to_bytes(&value));
             self.needs_update = true;
+
             return true;
         }
 
         false
     }
 
-    pub fn update_webgl_buffer(&self, gl: &WebGl2RenderingContext, webgl_buffer: &WebGlBuffer) {
-        let buffer = if self.data.len() == 1 {
-            self.data[0].to_bytes()
-        } else {
-            &self.build_bytes_buffer()
-        };
-
-        VertexBuffer::set_buffer(gl, webgl_buffer, buffer);
-    }
-
-    pub fn build_bytes_buffer(&self) -> Vec<u8> {
-        let vertex_count = self.data[0].count();
-        let stride = self.layout[0].stride as usize;
+    fn array_to_bytes(vertex_data_array: &Vec<VertexData>, layout: &Vec<VertexLayout>) -> Vec<u8> {
+        let vertex_count = vertex_data_array[0].count();
+        let stride = layout[0].stride as usize;
 
         let mut buffer = Vec::with_capacity(stride * vertex_count);
 
         for vertex_index in 0..vertex_count {
-            for attribute_data in self.data.iter() {
-                attribute_data.write_vertex_bytes(vertex_index, &mut buffer);
+            for vertex_data in vertex_data_array.iter() {
+                vertex_data.write_vertex_bytes(vertex_index, &mut buffer);
             }
         }
 
         buffer
-    }
-
-    fn set_buffer(gl: &WebGl2RenderingContext, webgl_buffer: &WebGlBuffer, bytes: &[u8]) {
-        gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
-
-        unsafe {
-            let data = js_sys::Uint8Array::view(bytes);
-            gl.buffer_data_with_array_buffer_view(WebGl2RenderingContext::ARRAY_BUFFER, &data, WebGl2RenderingContext::STATIC_DRAW);
-        }
-    }
-
-    fn attribute_data_array_to_attribute_layout_array(attributes: &Vec<(String, VertexData)>) -> Vec<VertexLayout> {
-        let mut attribute_layout_array = Vec::new();
-        let mut offset = 0;
-
-        for (name, attribute) in attributes {
-            let layout = VertexLayout {
-                name:            String::from(name),
-                component_count: attribute.component_count(),
-                component_type:  attribute.component_type(),
-                normalize:       false,
-                offset:          offset,
-                stride:          0, // Will be populated after the loop
-                divisor:         0,
-            };
-
-            offset += attribute.component_count() * attribute.component_type().size_in_bytes();
-            attribute_layout_array.push(layout);
-        }
-
-        // After the previous loop, offset will be equal to the stride
-        for attribute_layout in &mut attribute_layout_array {
-            attribute_layout.stride = offset;
-        }
-
-        attribute_layout_array
-    }
-
-    pub fn vertex_count(&self) -> usize {
-        for attribute_data in &self.data {
-            return attribute_data.count();
-        }
-
-        unreachable!("VertexBuffer data will never be empty");
     }
 }

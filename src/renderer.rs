@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use web_sys::{HtmlCanvasElement, WebGl2RenderingContext};
+use web_sys::{js_sys, HtmlCanvasElement, WebGl2RenderingContext};
 use web_sys::{WebGlBuffer, wasm_bindgen::JsCast};
 
 use crate::{
@@ -117,7 +117,16 @@ impl Renderer {
 
             if vertex_data.needs_update {
                 let webgl_buffer = self.webgl_buffers.get(&vertex_data.id).unwrap();
-                vertex_data.update_webgl_buffer(&self.gl, &webgl_buffer);
+                self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
+
+                unsafe {
+                    self.gl.buffer_data_with_array_buffer_view(
+                        WebGl2RenderingContext::ARRAY_BUFFER,
+                        &js_sys::Uint8Array::view(&vertex_data.data),
+                        WebGl2RenderingContext::STATIC_DRAW,
+                    );
+                }
+
                 vertex_data.needs_update = false;
             }
         }
