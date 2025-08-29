@@ -1,6 +1,9 @@
+use std::{rc::Rc, sync::Mutex};
+
 use glam::Quat;
 use suricato::{geometry::Geometry, material::Material, renderer::Renderer, transform::Transform};
 use wasm_bindgen::{JsCast, prelude::Closure};
+use web_sys::console;
 
 fn main() {
     console_error_panic_hook::set_once();
@@ -30,7 +33,7 @@ void main() {
 
     let mut renderer = Renderer::new();
 
-    let size = 20;
+    let size = 512;
 
     let mut material = Material::new(vertex_shader_source, fragment_shader_source);
     let mut geometry = Geometry::instance_quad(size * size);
@@ -39,14 +42,20 @@ void main() {
     for x in 0..size {
         for y in 0..size {
             let mut transform = Transform::new();
-            transform.scale *= 0.05;
-            transform.translation.x = (x as f32 - size as f32 / 2.0) / size as f32;
-            transform.translation.y = (y as f32 - size as f32 / 2.0) / size as f32;
+            transform.scale *= 0.005;
+            transform.translation.x = 1.85 * (x as f32 - size as f32 / 2.0) / size as f32;
+            transform.translation.y = 1.85 * (y as f32 - size as f32 / 2.0) / size as f32;
             transforms.push(transform);
         }
     }
 
+    let frames_rendered = Rc::new(Mutex::new(1));
+    let frames_rendered_cloned = Rc::clone(&frames_rendered);
+
     let render_loop = Closure::wrap(Box::new(move || {
+        let mut counter = frames_rendered_cloned.lock().unwrap();
+        *counter += 1;
+
         renderer.clear();
 
         for (i, transform) in transforms.iter_mut().enumerate() {
@@ -63,6 +72,21 @@ void main() {
         .unwrap();
 
     render_loop.forget();
+
+    let frames_rendered_cloned = Rc::clone(&frames_rendered);
+
+    let fps_loop = Closure::wrap(Box::new(move || {
+        let mut counter = frames_rendered_cloned.lock().unwrap();
+        console::log_1(&format!("Frames rendered the last second: {}", counter).into());
+        *counter = 0;
+    }) as Box<dyn FnMut()>);
+
+    web_sys::window()
+        .unwrap()
+        .set_interval_with_callback_and_timeout_and_arguments_0(fps_loop.as_ref().unchecked_ref(), 1000)
+        .unwrap();
+
+    fps_loop.forget();
 }
 
 // use glam::Quat;

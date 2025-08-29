@@ -79,6 +79,12 @@ pub enum VertexData {
     Vec2(Vec<[f32; 2]>),
     Vec3(Vec<[f32; 3]>),
     Vec4(Vec<[f32; 4]>),
+
+    Int(Vec<i32>),
+    IntVec2(Vec<[i32; 2]>),
+    IntVec3(Vec<[i32; 3]>),
+    IntVec4(Vec<[i32; 4]>),
+
     Mat4(Vec<[f32; 16]>),
 }
 
@@ -89,6 +95,12 @@ impl VertexData {
             VertexData::Vec2(data) => data.len(),
             VertexData::Vec3(data) => data.len(),
             VertexData::Vec4(data) => data.len(),
+
+            VertexData::Int(data) => data.len(),
+            VertexData::IntVec2(data) => data.len(),
+            VertexData::IntVec3(data) => data.len(),
+            VertexData::IntVec4(data) => data.len(),
+
             VertexData::Mat4(data) => data.len(),
         }
     }
@@ -99,6 +111,12 @@ impl VertexData {
             VertexData::Vec2 { .. } => 2,
             VertexData::Vec3 { .. } => 3,
             VertexData::Vec4 { .. } => 4,
+
+            VertexData::Int { .. } => 1,
+            VertexData::IntVec2 { .. } => 2,
+            VertexData::IntVec3 { .. } => 3,
+            VertexData::IntVec4 { .. } => 4,
+
             VertexData::Mat4 { .. } => 16,
         }
     }
@@ -109,6 +127,12 @@ impl VertexData {
             VertexData::Vec2 { .. } => VertexComponentType::Float,
             VertexData::Vec3 { .. } => VertexComponentType::Float,
             VertexData::Vec4 { .. } => VertexComponentType::Float,
+
+            VertexData::Int { .. } => VertexComponentType::Int,
+            VertexData::IntVec2 { .. } => VertexComponentType::Int,
+            VertexData::IntVec3 { .. } => VertexComponentType::Int,
+            VertexData::IntVec4 { .. } => VertexComponentType::Int,
+
             VertexData::Mat4 { .. } => VertexComponentType::Float,
         }
     }
@@ -119,6 +143,12 @@ impl VertexData {
             VertexData::Vec2(data) => to_bytes(data).to_vec(),
             VertexData::Vec3(data) => to_bytes(data).to_vec(),
             VertexData::Vec4(data) => to_bytes(data).to_vec(),
+
+            VertexData::Int(data) => to_bytes(data).to_vec(),
+            VertexData::IntVec2(data) => to_bytes(data).to_vec(),
+            VertexData::IntVec3(data) => to_bytes(data).to_vec(),
+            VertexData::IntVec4(data) => to_bytes(data).to_vec(),
+
             VertexData::Mat4(data) => to_bytes(data).to_vec(),
         }
     }
@@ -137,6 +167,20 @@ impl VertexData {
             VertexData::Vec4(data) => {
                 buffer.extend_from_slice(to_bytes(&data[vertex_index]));
             }
+
+            VertexData::Int(data) => {
+                buffer.extend_from_slice(&data[vertex_index].to_ne_bytes());
+            }
+            VertexData::IntVec2(data) => {
+                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+            }
+            VertexData::IntVec3(data) => {
+                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+            }
+            VertexData::IntVec4(data) => {
+                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+            }
+
             VertexData::Mat4(data) => {
                 buffer.extend_from_slice(to_bytes(&data[vertex_index]));
             }
