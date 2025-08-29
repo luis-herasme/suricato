@@ -39,29 +39,29 @@ pub struct VertexLayout {
 }
 
 impl VertexLayout {
-    fn from_vertex_data_array(vertex_data: &Vec<(String, VertexData)>) -> Vec<VertexLayout> {
-        let mut vertex_layouts = Vec::with_capacity(vertex_data.len());
+    fn from_vertex_array(vertex_array: &Vec<VertexDescriptor>) -> Vec<VertexLayout> {
+        let mut vertex_layouts = Vec::with_capacity(vertex_array.len());
 
         let mut max_alignment = 0;
         let mut current_offset = 0;
 
-        for (name, vertex_data) in vertex_data {
-            let alignment = vertex_data.component_type().size_in_bytes();
+        for vertex in vertex_array {
+            let alignment = vertex.data.component_type().size_in_bytes();
 
             max_alignment = max_alignment.max(alignment);
             current_offset = VertexLayout::align_to(current_offset, alignment);
 
             let layout = VertexLayout {
-                name:            String::from(name),
-                component_count: vertex_data.component_count(),
-                component_type:  vertex_data.component_type(),
-                normalize:       false,
+                name:            vertex.name.clone(),
+                component_count: vertex.data.component_count(),
+                component_type:  vertex.data.component_type(),
+                normalize:       vertex.normalize,
                 offset:          current_offset,
                 stride:          0, // Will be populated after the loop
-                divisor:         0,
+                divisor:         vertex.divisor,
             };
 
-            current_offset += vertex_data.component_count() * vertex_data.component_type().size_in_bytes();
+            current_offset += vertex.data.component_count() * vertex.data.component_type().size_in_bytes();
             vertex_layouts.push(layout);
         }
 
@@ -107,6 +107,38 @@ fn to_bytes<T>(slice: &[T]) -> &[u8] {
     let len = slice.len() * std::mem::size_of::<T>();
     unsafe {
         return std::slice::from_raw_parts(slice.as_ptr() as *const u8, len);
+    }
+}
+
+pub struct VertexDescriptor {
+    name:      String,
+    data:      VertexData,
+    divisor:   u32,
+    normalize: bool,
+}
+
+impl VertexDescriptor {
+    pub fn new(name: &str, data: VertexData) -> VertexDescriptor {
+        VertexDescriptor {
+            name: String::from(name),
+            data,
+            divisor: 0,
+            normalize: false,
+        }
+    }
+
+    pub fn normalize(mut self) -> VertexDescriptor {
+        self.normalize = true;
+        self
+    }
+
+    pub fn divisor(mut self, value: u32) -> VertexDescriptor {
+        self.divisor = value;
+        self
+    }
+
+    pub fn to_vertex_buffer(self) -> VertexBuffer {
+        VertexBuffer::single_vertex(self)
     }
 }
 
@@ -264,50 +296,30 @@ pub struct VertexBuffer {
 }
 
 impl VertexBuffer {
-    pub fn single_attribute(name: &str, data: VertexData) -> VertexBuffer {
+    pub fn single_vertex(vertex: VertexDescriptor) -> VertexBuffer {
         let layout = VertexLayout {
-            name:            String::from(name),
-            component_count: data.component_count(),
-            component_type:  data.component_type(),
-            normalize:       false,
-            stride:          data.component_count() * data.component_type().size_in_bytes(),
+            name:            vertex.name.clone(),
+            component_count: vertex.data.component_count(),
+            component_type:  vertex.data.component_type(),
+            normalize:       vertex.normalize,
+            stride:          vertex.data.component_count() * vertex.data.component_type().size_in_bytes(),
             offset:          0,
-            divisor:         0,
+            divisor:         vertex.divisor,
         };
 
         VertexBuffer {
             id:           generate_id(),
             needs_update: true,
-            count:        data.count(),
-            data:         data.to_bytes(),
+            count:        vertex.data.count(),
+            data:         vertex.data.to_bytes(),
             layout:       vec![layout],
         }
     }
 
-    pub fn single_attribute_with_divisor(name: &str, data: VertexData, divisor: u32) -> VertexBuffer {
-        let layout = VertexLayout {
-            name:            String::from(name),
-            component_count: data.component_count(),
-            component_type:  data.component_type(),
-            normalize:       false,
-            stride:          data.component_count() * data.component_type().size_in_bytes(),
-            offset:          0,
-            divisor:         divisor,
-        };
+    pub fn interleaved_vertices(data: Vec<VertexDescriptor>) -> VertexBuffer {
+        let layout = VertexLayout::from_vertex_array(&data);
 
-        VertexBuffer {
-            id:           generate_id(),
-            needs_update: true,
-            count:        data.count(),
-            data:         data.to_bytes(),
-            layout:       vec![layout],
-        }
-    }
-
-    pub fn interleaved_attributes(data: Vec<(String, VertexData)>) -> VertexBuffer {
-        let layout = VertexLayout::from_vertex_data_array(&data);
-
-        let data: Vec<VertexData> = data.into_iter().map(|x| x.1).collect();
+        let data: Vec<VertexData> = data.into_iter().map(|x| x.data).collect();
         let count = data[0].count();
         let data = VertexBuffer::array_to_bytes(&data, &layout);
 
@@ -368,22 +380,5 @@ impl VertexBuffer {
         }
 
         buffer
-    }
-
-    pub fn normalize_all(&mut self) {
-        for layout in &mut self.layout {
-            layout.normalize = true;
-        }
-    }
-
-    pub fn normalize(&mut self, name: &str) {
-        for layout in &mut self.layout {
-            if layout.name != name {
-                continue;
-            }
-
-            layout.normalize = true;
-            return;
-        }
     }
 }

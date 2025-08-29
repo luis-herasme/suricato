@@ -24,6 +24,10 @@ impl IndexData {
             IndexData::UnsignedInt(_) => WebGl2RenderingContext::UNSIGNED_INT,
         }
     }
+
+    pub fn to_index_buffer(self) -> IndexBuffer {
+        IndexBuffer::new(self)
+    }
 }
 
 pub struct IndexLayout {

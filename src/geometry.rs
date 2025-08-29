@@ -1,7 +1,7 @@
 use crate::{
     index_buffer::{IndexBuffer, IndexData},
     transform::Transform,
-    vertex_buffer::{VertexBuffer, VertexData},
+    vertex_buffer::{VertexBuffer, VertexData, VertexDescriptor},
 };
 
 pub struct Geometry {
@@ -32,66 +32,73 @@ impl Geometry {
         }
     }
 
-    #[rustfmt::skip]
     pub fn quad() -> Geometry {
-        let vertex_data = vec![
-            VertexBuffer::interleaved_attributes(
-                vec![
-                    (
-                        "position".to_string(),
-                        VertexData::Vec2(vec![
-                            [0.5, 0.5],   // Top right
-                            [0.5, -0.5],  // Bottom right
-                            [-0.5, -0.5], // Bottom left
-                            [-0.5, 0.5],  // Top left
-                        ])
-                    ),
-                    (
-                        "color".to_string(),
-                        VertexData::Vec3(vec![
-                            [1.0, 0.0, 0.0], // Top right
-                            [0.0, 1.0, 0.0], // Bottom right
-                            [0.0, 0.0, 1.0], // Bottom left
-                            [0.0, 1.0, 0.0], // Top left
-                        ])
-                    )
-                ]
-            )
-            // VertexBuffer::single_attribute("position",
-            //     VertexData::Vec2(vec![
-            //         0.5, 0.5,   // Top right
-            //         0.5, -0.5,  // Bottom right
-            //         -0.5, -0.5, // Bottom left
-            //         -0.5, 0.5,  // Top left
-            //     ])
-            // ),
-            // VertexBuffer::single_attribute("color",
-            //     VertexData::Vec3(vec![
-            //         1.0, 0.0, 0.0, // Top right
-            //         0.0, 1.0, 0.0, // Bottom right
-            //         0.0, 0.0, 1.0, // Bottom left
-            //         0.0, 1.0, 0.0, // Top left
-            //     ])
-            // ),
-        ];
+        let position = VertexDescriptor::new(
+            "position",
+            VertexData::Vec2(vec![
+                [0.5, 0.5],   // Top right
+                [0.5, -0.5],  // Bottom right
+                [-0.5, -0.5], // Bottom left
+                [-0.5, 0.5],  // Top left
+            ]),
+        );
 
-        let vertex_count = match vertex_data.get(0) {
-            Some(attribute) => attribute.count,
-            None => 0
-        };
+        let color = VertexDescriptor::new(
+            "color",
+            VertexData::UByteVec3(vec![
+                [255, 0, 0], // Top right
+                [0, 255, 0], // Bottom right
+                [0, 0, 255], // Bottom left
+                [0, 255, 0], // Top left
+            ]),
+        )
+        .normalize();
+
+        let indices = IndexData::UnsignedByte(vec![
+            0, 1, 2, // Triangle #1
+            2, 3, 0, // Triangle #2
+        ]);
 
         Geometry {
+            vertex_count:   4,
             instance_count: None,
-            vertex_count,
-            vertex_buffers: vertex_data,
-            indices: Some(
-                IndexBuffer::new(
-                    IndexData::UnsignedByte(vec![
-                        0, 1, 2, // Triangle #1
-                        2, 3, 0, // Triangle #2
-                    ])
-                )
-            )
+            indices:        Some(indices.to_index_buffer()),
+            vertex_buffers: vec![position.to_vertex_buffer(), color.to_vertex_buffer()],
+        }
+    }
+
+    pub fn quad_interleaved() -> Geometry {
+        let position = VertexDescriptor::new(
+            "position",
+            VertexData::Vec2(vec![
+                [0.5, 0.5],   // Top right
+                [0.5, -0.5],  // Bottom right
+                [-0.5, -0.5], // Bottom left
+                [-0.5, 0.5],  // Top left
+            ]),
+        );
+
+        let color = VertexDescriptor::new(
+            "color",
+            VertexData::UByteVec3(vec![
+                [255, 0, 0], // Top right
+                [0, 255, 0], // Bottom right
+                [0, 0, 255], // Bottom left
+                [0, 255, 0], // Top left
+            ]),
+        )
+        .normalize();
+
+        let indices = IndexData::UnsignedByte(vec![
+            0, 1, 2, // Triangle #1
+            2, 3, 0, // Triangle #2
+        ]);
+
+        Geometry {
+            vertex_count:   4,
+            instance_count: None,
+            indices:        Some(indices.to_index_buffer()),
+            vertex_buffers: vec![VertexBuffer::interleaved_vertices(vec![position, color])],
         }
     }
 
@@ -103,62 +110,37 @@ impl Geometry {
             trasnforms.push(Transform::new().to_array());
         }
 
-        let mut interleaved_vertex_data = VertexBuffer::interleaved_attributes(
-            vec![
-                (
-                    "position".to_string(),
-                    VertexData::Vec2(vec![
-                        [0.5, 0.5],   // Top right
-                        [0.5, -0.5],  // Bottom right
-                        [-0.5, -0.5], // Bottom left
-                        [-0.5, 0.5],  // Top left
-                    ])
-                ),
-                (
-                    "color".to_string(),
-                    // VertexData::Vec3(vec![
-                    //     [1.0, 0.0, 0.0], // Top right
-                    //     [0.0, 1.0, 0.0], // Bottom right
-                    //     [0.0, 0.0, 1.0], // Bottom left
-                    //     [0.0, 1.0, 0.0], // Top left
-                    // ])
-                    VertexData::UByteVec3(vec![
-                        [255, 0, 0], // Top right
-                        [0, 255, 0], // Bottom right
-                        [0, 0, 255], // Bottom left
-                        [0, 255, 0], // Top left
-                    ])
-                )
-            ]
-        );
-
-        interleaved_vertex_data.normalize("color");
-
-        let vertex_data = vec![
-            interleaved_vertex_data,
-            VertexBuffer::single_attribute_with_divisor("transform",
-                VertexData::Mat4(trasnforms),
-                1
-            ),
-        ];
-
-        let vertex_count = match vertex_data.get(0) {
-            Some(attribute) => attribute.count,
-            None => 0
-        };
-
         Geometry {
             instance_count: Some(count),
-            vertex_count,
-            vertex_buffers: vertex_data,
-            indices: Some(
-                IndexBuffer::new(
-                    IndexData::UnsignedByte(vec![
-                        0, 1, 2, // Triangle #1
-                        2, 3, 0, // Triangle #2
-                    ])
-                )
-            )
+            vertex_count: 4,
+            vertex_buffers: vec![
+                VertexBuffer::interleaved_vertices(vec![
+                    VertexDescriptor::new(
+                        "position",
+                        VertexData::Vec2(vec![
+                            [0.5, 0.5],   // Top right
+                            [0.5, -0.5],  // Bottom right
+                            [-0.5, -0.5], // Bottom left
+                            [-0.5, 0.5],  // Top left
+                        ]),
+                    ),
+                    VertexDescriptor::new(
+                        "color",
+                        VertexData::UByteVec3(vec![
+                            [255, 0, 0], // Top right
+                            [0, 255, 0], // Bottom right
+                            [0, 0, 255], // Bottom left
+                            [0, 255, 0], // Top left
+                        ]),
+                    )
+                    .normalize(),
+                ]),
+                VertexBuffer::single_vertex(VertexDescriptor::new("transform", VertexData::Mat4(trasnforms)).divisor(1)),
+            ],
+            indices: Some(IndexBuffer::new(IndexData::UnsignedByte(vec![
+                0, 1, 2, // Triangle #1
+                2, 3, 0, // Triangle #2
+            ]))),
         }
     }
 }
