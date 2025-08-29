@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
-use crate::{vertex_buffer::VertexBuffer, generate_id::generate_id, uniforms::Uniform};
+use crate::{uniforms::Uniform, utils::generate_id, vertex_buffer::VertexBuffer};
 
 pub struct Material {
     pub id:                 u64,

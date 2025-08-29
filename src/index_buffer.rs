@@ -1,6 +1,6 @@
 use web_sys::{WebGl2RenderingContext, WebGlBuffer, js_sys};
 
-use crate::generate_id::generate_id;
+use crate::utils::generate_id;
 
 pub enum IndexData {
     UnsignedByte(Vec<u8>),

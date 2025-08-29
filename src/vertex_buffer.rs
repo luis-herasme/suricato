@@ -1,6 +1,6 @@
 use web_sys::WebGl2RenderingContext;
 
-use crate::generate_id::generate_id;
+use crate::utils::{generate_id, to_bytes};
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy)]
@@ -100,13 +100,6 @@ impl VertexLayout {
         }
 
         return value + (alignment - remainder);
-    }
-}
-
-fn to_bytes<T>(slice: &[T]) -> &[u8] {
-    let len = slice.len() * std::mem::size_of::<T>();
-    unsafe {
-        return std::slice::from_raw_parts(slice.as_ptr() as *const u8, len);
     }
 }
 
