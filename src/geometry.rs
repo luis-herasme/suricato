@@ -137,10 +137,10 @@ impl Geometry {
                 ]),
                 VertexBuffer::single_vertex(VertexDescriptor::new("transform", VertexData::Mat4(trasnforms)).divisor(1)),
             ],
-            indices: Some(IndexBuffer::new(IndexData::UnsignedByte(vec![
+            indices: Some(IndexBuffer::from_u8(vec![
                 0, 1, 2, // Triangle #1
                 2, 3, 0, // Triangle #2
-            ]))),
+            ])),
         }
     }
 }

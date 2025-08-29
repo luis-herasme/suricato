@@ -43,6 +43,24 @@ pub struct IndexBuffer {
     pub layout: IndexLayout,
 }
 
+impl From<Vec<u8>> for IndexBuffer {
+    fn from(data: Vec<u8>) -> Self {
+        IndexBuffer::from_u8(data)
+    }
+}
+
+impl From<Vec<u16>> for IndexBuffer {
+    fn from(data: Vec<u16>) -> Self {
+        IndexBuffer::from_u16(data)
+    }
+}
+
+impl From<Vec<u32>> for IndexBuffer {
+    fn from(data: Vec<u32>) -> Self {
+        IndexBuffer::from_u32(data)
+    }
+}
+
 impl IndexBuffer {
     pub fn new(data: IndexData) -> IndexBuffer {
         IndexBuffer {
@@ -57,6 +75,18 @@ impl IndexBuffer {
         }
     }
 
+    pub fn from_u8(data: Vec<u8>) -> Self {
+        IndexBuffer::new(IndexData::UnsignedByte(data))
+    }
+
+    pub fn from_u16(data: Vec<u16>) -> Self {
+        IndexBuffer::new(IndexData::UnsignedShort(data))
+    }
+
+    pub fn from_u32(data: Vec<u32>) -> Self {
+        IndexBuffer::new(IndexData::UnsignedInt(data))
+    }
+
     pub fn create_webgl_buffer(&self, gl: &WebGl2RenderingContext) -> WebGlBuffer {
         let buffer = gl.create_buffer().unwrap();
         gl.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&buffer));
@@ -64,26 +94,23 @@ impl IndexBuffer {
         unsafe {
             match &self.data {
                 IndexData::UnsignedByte(data) => {
-                    let data = js_sys::Uint8Array::view(&data);
                     gl.buffer_data_with_array_buffer_view(
                         WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-                        &data,
+                        &js_sys::Uint8Array::view(&data),
                         WebGl2RenderingContext::STATIC_DRAW,
                     );
                 }
                 IndexData::UnsignedShort(data) => {
-                    let data = js_sys::Uint16Array::view(&data);
                     gl.buffer_data_with_array_buffer_view(
                         WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-                        &data,
+                        &js_sys::Uint16Array::view(&data),
                         WebGl2RenderingContext::STATIC_DRAW,
                     );
                 }
                 IndexData::UnsignedInt(data) => {
-                    let data = js_sys::Uint32Array::view(&data);
                     gl.buffer_data_with_array_buffer_view(
                         WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-                        &data,
+                        &js_sys::Uint32Array::view(&data),
                         WebGl2RenderingContext::STATIC_DRAW,
                     );
                 }
