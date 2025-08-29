@@ -40,30 +40,66 @@ pub struct VertexLayout {
 
 impl VertexLayout {
     fn from_vertex_data_array(vertex_data: &Vec<(String, VertexData)>) -> Vec<VertexLayout> {
-        let mut vertex_layouts = Vec::new();
-        let mut offset = 0;
+        let mut vertex_layouts = Vec::with_capacity(vertex_data.len());
+
+        let mut max_alignment = 0;
+        let mut current_offset = 0;
 
         for (name, vertex_data) in vertex_data {
+            let alignment = vertex_data.component_type().size_in_bytes();
+
+            max_alignment = max_alignment.max(alignment);
+            current_offset = VertexLayout::align_to(current_offset, alignment);
+
             let layout = VertexLayout {
                 name:            String::from(name),
                 component_count: vertex_data.component_count(),
                 component_type:  vertex_data.component_type(),
                 normalize:       false,
-                offset:          offset,
+                offset:          current_offset,
                 stride:          0, // Will be populated after the loop
                 divisor:         0,
             };
 
-            offset += vertex_data.component_count() * vertex_data.component_type().size_in_bytes();
+            current_offset += vertex_data.component_count() * vertex_data.component_type().size_in_bytes();
             vertex_layouts.push(layout);
         }
 
+        // The stride must be aligned to a value that is valid for all attributes.
+        // Since possible alignment values for attributes are powers of two,
+        // aligning to the maximum alignment ensures it is a multiple of all smaller alignments,
+        let stride = VertexLayout::align_to(current_offset, max_alignment);
+
         // After the previous loop, offset will be equal to the stride
         for vertex_layout in &mut vertex_layouts {
-            vertex_layout.stride = offset;
+            vertex_layout.stride = stride;
         }
 
         vertex_layouts
+    }
+
+    /// Aligns a value to the specified alignment boundary.
+    ///
+    /// This ensures that data is placed at memory addresses that are multiples
+    /// of the alignment requirement, which is necessary for optimal GPU access.
+    ///
+    /// # Examples
+    /// ```
+    /// assert_eq!(VertexLayout::align_to(5, 4), 8);  // 5 aligned to 4-byte boundary = 8
+    /// assert_eq!(VertexLayout::align_to(8, 4), 8);  // 8 is already aligned
+    /// ```
+    fn align_to(value: u8, alignment: u8) -> u8 {
+        if alignment == 0 {
+            return value;
+        }
+
+        let remainder = value % alignment;
+
+        if remainder == 0 {
+            return value;
+        }
+
+        return value + (alignment - remainder);
     }
 }
 
@@ -75,6 +111,11 @@ fn to_bytes<T>(slice: &[T]) -> &[u8] {
 }
 
 pub enum VertexData {
+    Byte(Vec<i8>),
+
+    UByte(Vec<u8>),
+    UByteVec3(Vec<[u8; 3]>),
+
     Float(Vec<f32>),
     Vec2(Vec<[f32; 2]>),
     Vec3(Vec<[f32; 3]>),
@@ -91,6 +132,10 @@ pub enum VertexData {
 impl VertexData {
     pub fn count(&self) -> usize {
         match &self {
+            VertexData::Byte(data) => data.len(),
+            VertexData::UByte(data) => data.len(),
+            VertexData::UByteVec3(data) => data.len(),
+
             VertexData::Float(data) => data.len(),
             VertexData::Vec2(data) => data.len(),
             VertexData::Vec3(data) => data.len(),
@@ -107,6 +152,10 @@ impl VertexData {
 
     fn component_count(&self) -> u8 {
         match &self {
+            VertexData::Byte { .. } => 1,
+            VertexData::UByte { .. } => 1,
+            VertexData::UByteVec3 { .. } => 3,
+
             VertexData::Float { .. } => 1,
             VertexData::Vec2 { .. } => 2,
             VertexData::Vec3 { .. } => 3,
@@ -123,6 +172,10 @@ impl VertexData {
 
     fn component_type(&self) -> VertexComponentType {
         match &self {
+            VertexData::Byte { .. } => VertexComponentType::Byte,
+            VertexData::UByte { .. } => VertexComponentType::UnsignedByte,
+            VertexData::UByteVec3 { .. } => VertexComponentType::UnsignedByte,
+
             VertexData::Float { .. } => VertexComponentType::Float,
             VertexData::Vec2 { .. } => VertexComponentType::Float,
             VertexData::Vec3 { .. } => VertexComponentType::Float,
@@ -139,6 +192,10 @@ impl VertexData {
 
     fn to_bytes(&self) -> Vec<u8> {
         match &self {
+            VertexData::Byte(data) => to_bytes(data).to_vec(),
+            VertexData::UByte(data) => data.clone(),
+            VertexData::UByteVec3(data) => to_bytes(data).to_vec(),
+
             VertexData::Float(data) => to_bytes(data).to_vec(),
             VertexData::Vec2(data) => to_bytes(data).to_vec(),
             VertexData::Vec3(data) => to_bytes(data).to_vec(),
@@ -153,36 +210,46 @@ impl VertexData {
         }
     }
 
-    fn write_vertex_bytes(&self, vertex_index: usize, buffer: &mut Vec<u8>) {
+    fn write_vertex_bytes(&self, vertex_index: usize, vertex_byte_index: usize, buffer: &mut Vec<u8>) {
         match self {
+            VertexData::Byte(data) => {
+                buffer[vertex_byte_index] = data[vertex_byte_index] as u8;
+            }
+            VertexData::UByte(data) => {
+                buffer[vertex_byte_index] = data[vertex_byte_index];
+            }
+            VertexData::UByteVec3(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 3].copy_from_slice(to_bytes(&data[vertex_index]));
+            }
+
             VertexData::Float(data) => {
-                buffer.extend_from_slice(&data[vertex_index].to_ne_bytes());
+                buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(&data[vertex_byte_index].to_ne_bytes());
             }
             VertexData::Vec2(data) => {
-                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+                buffer[vertex_byte_index..vertex_byte_index + 2 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
             VertexData::Vec3(data) => {
-                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+                buffer[vertex_byte_index..vertex_byte_index + 3 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
             VertexData::Vec4(data) => {
-                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+                buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
 
             VertexData::Int(data) => {
-                buffer.extend_from_slice(&data[vertex_index].to_ne_bytes());
+                buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(&data[vertex_byte_index].to_ne_bytes());
             }
             VertexData::IntVec2(data) => {
-                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+                buffer[vertex_byte_index..vertex_byte_index + 2 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
             VertexData::IntVec3(data) => {
-                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+                buffer[vertex_byte_index..vertex_byte_index + 3 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
             VertexData::IntVec4(data) => {
-                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+                buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
 
             VertexData::Mat4(data) => {
-                buffer.extend_from_slice(to_bytes(&data[vertex_index]));
+                buffer[vertex_byte_index..vertex_byte_index + 16 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
         }
     }
@@ -289,14 +356,34 @@ impl VertexBuffer {
         let vertex_count = vertex_data_array[0].count();
         let stride = layout[0].stride as usize;
 
-        let mut buffer = Vec::with_capacity(stride * vertex_count);
+        let mut buffer = vec![0; stride * vertex_count];
 
         for vertex_index in 0..vertex_count {
-            for vertex_data in vertex_data_array.iter() {
-                vertex_data.write_vertex_bytes(vertex_index, &mut buffer);
+            for i in 0..vertex_data_array.len() {
+                let vertex_data = &vertex_data_array[i];
+                let vertex_layout = &layout[i];
+                let vertex_byte_index = vertex_index * stride;
+                vertex_data.write_vertex_bytes(vertex_index, vertex_byte_index + vertex_layout.offset as usize, &mut buffer);
             }
         }
 
         buffer
+    }
+
+    pub fn normalize_all(&mut self) {
+        for layout in &mut self.layout {
+            layout.normalize = true;
+        }
+    }
+
+    pub fn normalize(&mut self, name: &str) {
+        for layout in &mut self.layout {
+            if layout.name != name {
+                continue;
+            }
+
+            layout.normalize = true;
+            return;
+        }
     }
 }

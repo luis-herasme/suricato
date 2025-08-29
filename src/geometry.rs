@@ -103,29 +103,39 @@ impl Geometry {
             trasnforms.push(Transform::new().to_array());
         }
 
+        let mut interleaved_vertex_data = VertexBuffer::interleaved_attributes(
+            vec![
+                (
+                    "position".to_string(),
+                    VertexData::Vec2(vec![
+                        [0.5, 0.5],   // Top right
+                        [0.5, -0.5],  // Bottom right
+                        [-0.5, -0.5], // Bottom left
+                        [-0.5, 0.5],  // Top left
+                    ])
+                ),
+                (
+                    "color".to_string(),
+                    // VertexData::Vec3(vec![
+                    //     [1.0, 0.0, 0.0], // Top right
+                    //     [0.0, 1.0, 0.0], // Bottom right
+                    //     [0.0, 0.0, 1.0], // Bottom left
+                    //     [0.0, 1.0, 0.0], // Top left
+                    // ])
+                    VertexData::UByteVec3(vec![
+                        [255, 0, 0], // Top right
+                        [0, 255, 0], // Bottom right
+                        [0, 0, 255], // Bottom left
+                        [0, 255, 0], // Top left
+                    ])
+                )
+            ]
+        );
+
+        interleaved_vertex_data.normalize("color");
+
         let vertex_data = vec![
-            VertexBuffer::interleaved_attributes(
-                vec![
-                    (
-                        "position".to_string(),
-                        VertexData::Vec2(vec![
-                            [0.5, 0.5],   // Top right
-                            [0.5, -0.5],  // Bottom right
-                            [-0.5, -0.5], // Bottom left
-                            [-0.5, 0.5],  // Top left
-                        ])
-                    ),
-                    (
-                        "color".to_string(),
-                        VertexData::Vec3(vec![
-                            [1.0, 0.0, 0.0], // Top right
-                            [0.0, 1.0, 0.0], // Bottom right
-                            [0.0, 0.0, 1.0], // Bottom left
-                            [0.0, 1.0, 0.0], // Top left
-                        ])
-                    )
-                ]
-            ),
+            interleaved_vertex_data,
             VertexBuffer::single_attribute_with_divisor("transform",
                 VertexData::Mat4(trasnforms),
                 1
