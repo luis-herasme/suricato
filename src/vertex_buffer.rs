@@ -63,7 +63,7 @@ impl VertexLayout {
                 number_of_columns: vertex.data.number_of_columns(),
             };
 
-            current_offset += (vertex.data.component_count() * vertex.data.component_type().size_in_bytes()) as usize;
+            current_offset += vertex.data.size_in_bytes();
             vertex_layouts.push(layout);
         }
 
@@ -197,6 +197,10 @@ impl Data {
             Data::Mat3(data) => data.len(),
             Data::Mat4(data) => data.len(),
         }
+    }
+
+    fn size_in_bytes(&self) -> usize {
+        (self.component_count() * self.component_type().size_in_bytes()) as usize
     }
 
     fn component_count(&self) -> u8 {
@@ -336,111 +340,6 @@ impl Data {
             Data::Mat4(data) => to_bytes(data),
         }
     }
-
-    fn write_vertex_bytes(&self, vertex_index: usize, vertex_byte_index: usize, buffer: &mut Vec<u8>) {
-        match self {
-            Data::Byte(data) => {
-                buffer[vertex_byte_index] = data[vertex_byte_index] as u8;
-            }
-            Data::ByteVec2(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 2].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::ByteVec3(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 3].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::ByteVec4(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-
-            Data::UnsignedByte(data) => {
-                buffer[vertex_byte_index] = data[vertex_byte_index];
-            }
-            Data::UnsignedByteVec2(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 2].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::UnsignedByteVec3(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 3].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::UnsignedByteVec4(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-
-            Data::Float(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(&data[vertex_byte_index].to_ne_bytes());
-            }
-            Data::Vec2(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 2 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::Vec3(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 3 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::Vec4(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-
-            Data::Int(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(&data[vertex_byte_index].to_ne_bytes());
-            }
-            Data::IntVec2(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 2 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::IntVec3(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 3 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::IntVec4(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-
-            Data::UnsignedInt(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(&data[vertex_byte_index].to_ne_bytes());
-            }
-            Data::UnsignedIntVec2(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 2 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::UnsignedIntVec3(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 3 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::UnsignedIntVec4(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-
-            Data::Short(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(&data[vertex_byte_index].to_ne_bytes());
-            }
-            Data::ShortVec2(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 2 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::ShortVec3(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 3 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::ShortVec4(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-
-            Data::UnsignedShort(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(&data[vertex_byte_index].to_ne_bytes());
-            }
-            Data::UnsignedShortVec2(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 2 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::UnsignedShortVec3(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 3 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::UnsignedShortVec4(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-
-            Data::Mat2(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::Mat3(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 9 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-            Data::Mat4(data) => {
-                buffer[vertex_byte_index..vertex_byte_index + 16 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
-            }
-        }
-    }
 }
 
 /// Represents a buffer of vertex data stored in system memory,
@@ -490,7 +389,7 @@ impl VertexBuffer {
             component_count:   vertex.data.component_count(),
             component_type:    vertex.data.component_type(),
             normalize:         vertex.normalize,
-            stride:            (vertex.data.component_count() * vertex.data.component_type().size_in_bytes()) as usize,
+            stride:            vertex.data.size_in_bytes(),
             offset:            0,
             divisor:           vertex.divisor,
             number_of_columns: vertex.data.number_of_columns(),
@@ -510,7 +409,7 @@ impl VertexBuffer {
 
         let data: Vec<Data> = data.into_iter().map(|x| x.data).collect();
         let count = data[0].count();
-        let data = VertexBuffer::array_to_bytes(&data, &layout);
+        let data = VertexBuffer::interleaved_buffer_from_vertex_data_array(&data, &layout);
 
         VertexBuffer {
             id: generate_id(),
@@ -569,19 +468,31 @@ impl VertexBuffer {
         false
     }
 
-    fn array_to_bytes(vertex_data_array: &Vec<Data>, layout: &Vec<VertexLayout>) -> Vec<u8> {
+    fn interleaved_buffer_from_vertex_data_array(vertex_data_array: &Vec<Data>, layout_array: &Vec<VertexLayout>) -> Vec<u8> {
         let vertex_count = vertex_data_array[0].count();
-        let stride = layout[0].stride as usize;
+        let stride = layout_array[0].stride;
 
-        let mut buffer = vec![0; stride * vertex_count];
+        let mut interleaved_buffer = vec![0; stride * vertex_count];
 
-        for vertex_index in 0..vertex_count {
-            for i in 0..vertex_data_array.len() {
-                let vertex_byte_index = vertex_index * stride + layout[i].offset as usize;
-                vertex_data_array[i].write_vertex_bytes(vertex_index, vertex_byte_index, &mut buffer);
+        for i in 0..vertex_data_array.len() {
+            let vertex = &vertex_data_array[i];
+            let offset = &layout_array[i].offset;
+
+            for vertex_index in 0..vertex_count {
+                let vertex_size_in_bytes = vertex.size_in_bytes();
+
+                let source_start = vertex_index * vertex_size_in_bytes;
+                let source_final = source_start + vertex_size_in_bytes;
+
+                let vertex_byte_index = vertex_index * stride + offset;
+
+                let destination_start = vertex_byte_index;
+                let destination_final = vertex_byte_index + vertex_size_in_bytes;
+
+                interleaved_buffer[destination_start..destination_final].copy_from_slice(&vertex.to_bytes()[source_start..source_final]);
             }
         }
 
-        buffer
+        interleaved_buffer
     }
 }
