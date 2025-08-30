@@ -6,6 +6,7 @@ pub fn generate_id() -> u64 {
     ID_COUNTER.fetch_add(1, Ordering::Relaxed)
 }
 
+#[inline]
 pub fn to_bytes<T>(slice: &[T]) -> &[u8] {
     let len = slice.len() * std::mem::size_of::<T>();
     unsafe {

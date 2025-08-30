@@ -420,22 +420,42 @@ impl VertexBuffer {
         }
     }
 
+    /// Writes raw bytes into the buffer at a specific byte offset.
+    #[inline]
+    pub fn update<T>(&mut self, byte_offset: usize, value: &[T]) {
+        let bytes = to_bytes(&value);
+        self.data[byte_offset..byte_offset + bytes.len()].copy_from_slice(bytes);
+        self.needs_update = true;
+    }
+
+    /// Updates a specific vertex attribute for a given vertex index.
+    ///
+    /// # Returns
+    /// * `true` if the update was successful.
+    /// * `false` if the attribute name was not found in the layout.
+    #[inline]
     pub fn update_vertex<T>(&mut self, name: &str, vertex_index: usize, value: &[T]) -> bool {
-        for layout in &self.layout {
-            if layout.name != name {
-                continue;
-            }
-
-            let byte_index = vertex_index * layout.stride + layout.offset;
-            let bytes = to_bytes(&value);
-
-            self.data[byte_index..byte_index + bytes.len()].copy_from_slice(bytes);
-            self.needs_update = true;
-
+        if let Some(byte_index) = self.get_vertex_byte_offset(name, vertex_index) {
+            self.update(byte_index, value);
             return true;
         }
 
         false
+    }
+
+    /// Calculates the byte offset inside the buffer for a specific vertex attribute.
+    /// This is useful for interlaved VertexBuffers.
+    #[inline]
+    pub fn get_vertex_byte_offset(&self, attribute_name: &str, vertex_index: usize) -> Option<usize> {
+        for layout in &self.layout {
+            if layout.name != attribute_name {
+                continue;
+            }
+
+            return Some(vertex_index * layout.stride + layout.offset);
+        }
+
+        None
     }
 
     fn interleaved_buffer_from_vertex_data_array(vertex_data_array: &Vec<Data>, layout_array: &Vec<VertexLayout>) -> Vec<u8> {

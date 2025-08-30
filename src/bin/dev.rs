@@ -57,9 +57,9 @@ void main() {
 
         renderer.clear();
 
-        for (i, transform) in transforms.iter_mut().enumerate() {
-            transform.rotation += i as f32 * 0.0001;
-            geometry.update_vertex("transform", i, &transform.to_array());
+        for (vertex_index, transform) in transforms.iter_mut().enumerate() {
+            transform.rotation += vertex_index as f32 * 0.0001;
+            geometry.update_vertex("transform", vertex_index, &transform.to_array());
         }
 
         renderer.render(&mut material, &mut geometry);
