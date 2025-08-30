@@ -36,7 +36,7 @@ void main() {
     let size = 512;
 
     let mut material = Material::new(vertex_shader_source, fragment_shader_source);
-    let mut geometry = Geometry::instance_quad(size * size);
+    let mut geometry = Geometry::quad_instanced_and_interleaved(size * size);
     let mut transforms = Vec::new();
 
     for x in 0..size {

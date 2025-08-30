@@ -39,7 +39,7 @@ pub struct VertexLayout {
 }
 
 impl VertexLayout {
-    fn from_vertex_array(vertex_array: &Vec<VertexDescriptor>) -> Vec<VertexLayout> {
+    fn from_vertex_array(vertex_array: &Vec<VertexData>) -> Vec<VertexLayout> {
         let mut vertex_layouts = Vec::with_capacity(vertex_array.len());
 
         let mut max_alignment = 0;
@@ -103,43 +103,18 @@ impl VertexLayout {
     }
 }
 
-pub struct VertexDescriptor {
-    name:      String,
-    data:      VertexData,
-    divisor:   u32,
-    normalize: bool,
+pub struct VertexData {
+    pub name:      String,
+    pub data:      Data,
+    pub divisor:   u32,
+    pub normalize: bool,
 }
 
-impl VertexDescriptor {
-    pub fn new(name: &str, data: VertexData) -> VertexDescriptor {
-        VertexDescriptor {
-            name: String::from(name),
-            data,
-            divisor: 0,
-            normalize: false,
-        }
-    }
-
-    pub fn normalize(mut self) -> VertexDescriptor {
-        self.normalize = true;
-        self
-    }
-
-    pub fn divisor(mut self, value: u32) -> VertexDescriptor {
-        self.divisor = value;
-        self
-    }
-
-    pub fn to_vertex_buffer(self) -> VertexBuffer {
-        VertexBuffer::single_vertex(self)
-    }
-}
-
-pub enum VertexData {
+pub enum Data {
     Byte(Vec<i8>),
 
     UByte(Vec<u8>),
-    UByteVec3(Vec<[u8; 3]>),
+    UnsignedByteVec3(Vec<[u8; 3]>),
 
     Float(Vec<f32>),
     Vec2(Vec<[f32; 2]>),
@@ -154,126 +129,126 @@ pub enum VertexData {
     Mat4(Vec<[f32; 16]>),
 }
 
-impl VertexData {
+impl Data {
     pub fn count(&self) -> usize {
         match &self {
-            VertexData::Byte(data) => data.len(),
-            VertexData::UByte(data) => data.len(),
-            VertexData::UByteVec3(data) => data.len(),
+            Data::Byte(data) => data.len(),
+            Data::UByte(data) => data.len(),
+            Data::UnsignedByteVec3(data) => data.len(),
 
-            VertexData::Float(data) => data.len(),
-            VertexData::Vec2(data) => data.len(),
-            VertexData::Vec3(data) => data.len(),
-            VertexData::Vec4(data) => data.len(),
+            Data::Float(data) => data.len(),
+            Data::Vec2(data) => data.len(),
+            Data::Vec3(data) => data.len(),
+            Data::Vec4(data) => data.len(),
 
-            VertexData::Int(data) => data.len(),
-            VertexData::IntVec2(data) => data.len(),
-            VertexData::IntVec3(data) => data.len(),
-            VertexData::IntVec4(data) => data.len(),
+            Data::Int(data) => data.len(),
+            Data::IntVec2(data) => data.len(),
+            Data::IntVec3(data) => data.len(),
+            Data::IntVec4(data) => data.len(),
 
-            VertexData::Mat4(data) => data.len(),
+            Data::Mat4(data) => data.len(),
         }
     }
 
     fn component_count(&self) -> u8 {
         match &self {
-            VertexData::Byte { .. } => 1,
-            VertexData::UByte { .. } => 1,
-            VertexData::UByteVec3 { .. } => 3,
+            Data::Byte { .. } => 1,
+            Data::UByte { .. } => 1,
+            Data::UnsignedByteVec3 { .. } => 3,
 
-            VertexData::Float { .. } => 1,
-            VertexData::Vec2 { .. } => 2,
-            VertexData::Vec3 { .. } => 3,
-            VertexData::Vec4 { .. } => 4,
+            Data::Float { .. } => 1,
+            Data::Vec2 { .. } => 2,
+            Data::Vec3 { .. } => 3,
+            Data::Vec4 { .. } => 4,
 
-            VertexData::Int { .. } => 1,
-            VertexData::IntVec2 { .. } => 2,
-            VertexData::IntVec3 { .. } => 3,
-            VertexData::IntVec4 { .. } => 4,
+            Data::Int { .. } => 1,
+            Data::IntVec2 { .. } => 2,
+            Data::IntVec3 { .. } => 3,
+            Data::IntVec4 { .. } => 4,
 
-            VertexData::Mat4 { .. } => 16,
+            Data::Mat4 { .. } => 16,
         }
     }
 
     fn component_type(&self) -> VertexComponentType {
         match &self {
-            VertexData::Byte { .. } => VertexComponentType::Byte,
-            VertexData::UByte { .. } => VertexComponentType::UnsignedByte,
-            VertexData::UByteVec3 { .. } => VertexComponentType::UnsignedByte,
+            Data::Byte { .. } => VertexComponentType::Byte,
+            Data::UByte { .. } => VertexComponentType::UnsignedByte,
+            Data::UnsignedByteVec3 { .. } => VertexComponentType::UnsignedByte,
 
-            VertexData::Float { .. } => VertexComponentType::Float,
-            VertexData::Vec2 { .. } => VertexComponentType::Float,
-            VertexData::Vec3 { .. } => VertexComponentType::Float,
-            VertexData::Vec4 { .. } => VertexComponentType::Float,
+            Data::Float { .. } => VertexComponentType::Float,
+            Data::Vec2 { .. } => VertexComponentType::Float,
+            Data::Vec3 { .. } => VertexComponentType::Float,
+            Data::Vec4 { .. } => VertexComponentType::Float,
 
-            VertexData::Int { .. } => VertexComponentType::Int,
-            VertexData::IntVec2 { .. } => VertexComponentType::Int,
-            VertexData::IntVec3 { .. } => VertexComponentType::Int,
-            VertexData::IntVec4 { .. } => VertexComponentType::Int,
+            Data::Int { .. } => VertexComponentType::Int,
+            Data::IntVec2 { .. } => VertexComponentType::Int,
+            Data::IntVec3 { .. } => VertexComponentType::Int,
+            Data::IntVec4 { .. } => VertexComponentType::Int,
 
-            VertexData::Mat4 { .. } => VertexComponentType::Float,
+            Data::Mat4 { .. } => VertexComponentType::Float,
         }
     }
 
     fn to_bytes(&self) -> Vec<u8> {
         match &self {
-            VertexData::Byte(data) => to_bytes(data).to_vec(),
-            VertexData::UByte(data) => data.clone(),
-            VertexData::UByteVec3(data) => to_bytes(data).to_vec(),
+            Data::Byte(data) => to_bytes(data).to_vec(),
+            Data::UByte(data) => data.clone(),
+            Data::UnsignedByteVec3(data) => to_bytes(data).to_vec(),
 
-            VertexData::Float(data) => to_bytes(data).to_vec(),
-            VertexData::Vec2(data) => to_bytes(data).to_vec(),
-            VertexData::Vec3(data) => to_bytes(data).to_vec(),
-            VertexData::Vec4(data) => to_bytes(data).to_vec(),
+            Data::Float(data) => to_bytes(data).to_vec(),
+            Data::Vec2(data) => to_bytes(data).to_vec(),
+            Data::Vec3(data) => to_bytes(data).to_vec(),
+            Data::Vec4(data) => to_bytes(data).to_vec(),
 
-            VertexData::Int(data) => to_bytes(data).to_vec(),
-            VertexData::IntVec2(data) => to_bytes(data).to_vec(),
-            VertexData::IntVec3(data) => to_bytes(data).to_vec(),
-            VertexData::IntVec4(data) => to_bytes(data).to_vec(),
+            Data::Int(data) => to_bytes(data).to_vec(),
+            Data::IntVec2(data) => to_bytes(data).to_vec(),
+            Data::IntVec3(data) => to_bytes(data).to_vec(),
+            Data::IntVec4(data) => to_bytes(data).to_vec(),
 
-            VertexData::Mat4(data) => to_bytes(data).to_vec(),
+            Data::Mat4(data) => to_bytes(data).to_vec(),
         }
     }
 
     fn write_vertex_bytes(&self, vertex_index: usize, vertex_byte_index: usize, buffer: &mut Vec<u8>) {
         match self {
-            VertexData::Byte(data) => {
+            Data::Byte(data) => {
                 buffer[vertex_byte_index] = data[vertex_byte_index] as u8;
             }
-            VertexData::UByte(data) => {
+            Data::UByte(data) => {
                 buffer[vertex_byte_index] = data[vertex_byte_index];
             }
-            VertexData::UByteVec3(data) => {
+            Data::UnsignedByteVec3(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 3].copy_from_slice(to_bytes(&data[vertex_index]));
             }
 
-            VertexData::Float(data) => {
+            Data::Float(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(&data[vertex_byte_index].to_ne_bytes());
             }
-            VertexData::Vec2(data) => {
+            Data::Vec2(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 2 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
-            VertexData::Vec3(data) => {
+            Data::Vec3(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 3 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
-            VertexData::Vec4(data) => {
+            Data::Vec4(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
 
-            VertexData::Int(data) => {
+            Data::Int(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(&data[vertex_byte_index].to_ne_bytes());
             }
-            VertexData::IntVec2(data) => {
+            Data::IntVec2(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 2 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
-            VertexData::IntVec3(data) => {
+            Data::IntVec3(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 3 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
-            VertexData::IntVec4(data) => {
+            Data::IntVec4(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
 
-            VertexData::Mat4(data) => {
+            Data::Mat4(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 16 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
         }
@@ -289,7 +264,7 @@ pub struct VertexBuffer {
 }
 
 impl VertexBuffer {
-    pub fn single_vertex(vertex: VertexDescriptor) -> VertexBuffer {
+    pub fn new(vertex: VertexData) -> VertexBuffer {
         let layout = VertexLayout {
             name:            vertex.name.clone(),
             component_count: vertex.data.component_count(),
@@ -309,10 +284,10 @@ impl VertexBuffer {
         }
     }
 
-    pub fn interleaved_vertices(data: Vec<VertexDescriptor>) -> VertexBuffer {
+    pub fn interleaved_vertices(data: Vec<VertexData>) -> VertexBuffer {
         let layout = VertexLayout::from_vertex_array(&data);
 
-        let data: Vec<VertexData> = data.into_iter().map(|x| x.data).collect();
+        let data: Vec<Data> = data.into_iter().map(|x| x.data).collect();
         let count = data[0].count();
         let data = VertexBuffer::array_to_bytes(&data, &layout);
 
@@ -357,7 +332,7 @@ impl VertexBuffer {
         false
     }
 
-    fn array_to_bytes(vertex_data_array: &Vec<VertexData>, layout: &Vec<VertexLayout>) -> Vec<u8> {
+    fn array_to_bytes(vertex_data_array: &Vec<Data>, layout: &Vec<VertexLayout>) -> Vec<u8> {
         let vertex_count = vertex_data_array[0].count();
         let stride = layout[0].stride as usize;
 
