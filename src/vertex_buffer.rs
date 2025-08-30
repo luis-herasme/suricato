@@ -115,8 +115,10 @@ pub struct VertexData {
 pub enum Data {
     Byte(Vec<i8>),
 
-    UByte(Vec<u8>),
+    UnsignedByte(Vec<u8>),
+    UnsignedByteVec2(Vec<[u8; 2]>),
     UnsignedByteVec3(Vec<[u8; 3]>),
+    UnsignedByteVec4(Vec<[u8; 4]>),
 
     Float(Vec<f32>),
     Vec2(Vec<[f32; 2]>),
@@ -137,8 +139,11 @@ impl Data {
     pub fn count(&self) -> usize {
         match &self {
             Data::Byte(data) => data.len(),
-            Data::UByte(data) => data.len(),
+
+            Data::UnsignedByte(data) => data.len(),
+            Data::UnsignedByteVec2(data) => data.len(),
             Data::UnsignedByteVec3(data) => data.len(),
+            Data::UnsignedByteVec4(data) => data.len(),
 
             Data::Float(data) => data.len(),
             Data::Vec2(data) => data.len(),
@@ -159,8 +164,11 @@ impl Data {
     fn component_count(&self) -> u8 {
         match &self {
             Data::Byte { .. } => 1,
-            Data::UByte { .. } => 1,
+
+            Data::UnsignedByte { .. } => 1,
+            Data::UnsignedByteVec2 { .. } => 2,
             Data::UnsignedByteVec3 { .. } => 3,
+            Data::UnsignedByteVec4 { .. } => 4,
 
             Data::Float { .. } => 1,
             Data::Vec2 { .. } => 2,
@@ -181,8 +189,11 @@ impl Data {
     fn component_type(&self) -> VertexComponentType {
         match &self {
             Data::Byte { .. } => VertexComponentType::Byte,
-            Data::UByte { .. } => VertexComponentType::UnsignedByte,
+
+            Data::UnsignedByte { .. } => VertexComponentType::UnsignedByte,
+            Data::UnsignedByteVec2 { .. } => VertexComponentType::UnsignedByte,
             Data::UnsignedByteVec3 { .. } => VertexComponentType::UnsignedByte,
+            Data::UnsignedByteVec4 { .. } => VertexComponentType::UnsignedByte,
 
             Data::Float { .. } => VertexComponentType::Float,
             Data::Vec2 { .. } => VertexComponentType::Float,
@@ -211,8 +222,11 @@ impl Data {
     fn to_bytes(&self) -> &[u8] {
         match &self {
             Data::Byte(data) => to_bytes(data),
-            Data::UByte(data) => to_bytes(data),
+
+            Data::UnsignedByte(data) => to_bytes(data),
+            Data::UnsignedByteVec2(data) => to_bytes(data),
             Data::UnsignedByteVec3(data) => to_bytes(data),
+            Data::UnsignedByteVec4(data) => to_bytes(data),
 
             Data::Float(data) => to_bytes(data),
             Data::Vec2(data) => to_bytes(data),
@@ -235,11 +249,17 @@ impl Data {
             Data::Byte(data) => {
                 buffer[vertex_byte_index] = data[vertex_byte_index] as u8;
             }
-            Data::UByte(data) => {
+            Data::UnsignedByte(data) => {
                 buffer[vertex_byte_index] = data[vertex_byte_index];
+            }
+            Data::UnsignedByteVec2(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 2].copy_from_slice(to_bytes(&data[vertex_index]));
             }
             Data::UnsignedByteVec3(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 3].copy_from_slice(to_bytes(&data[vertex_index]));
+            }
+            Data::UnsignedByteVec4(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
 
             Data::Float(data) => {
