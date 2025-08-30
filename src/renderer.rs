@@ -65,7 +65,16 @@ impl Renderer {
         // Set attributes
         for vertex_buffer in &geometry.vertex_buffers {
             let buffer = self.webgl_buffers.get(&vertex_buffer.id).unwrap(); // Created at create_geometry_resource
-            material_resource.set_attribute_buffer(vertex_buffer, buffer);
+            self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
+            material_resource.set_attribute_buffer(&vertex_buffer.layout);
+        }
+
+        for vertex_buffer in &geometry.interleaved_vertex_buffers {
+            let buffer = self.webgl_buffers.get(&vertex_buffer.id).unwrap(); // Created at create_geometry_resource
+            self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
+            for vertex_layout in &vertex_buffer.layouts {
+                material_resource.set_attribute_buffer(vertex_layout);
+            }
         }
 
         if let Some(indices) = &geometry.indices {
@@ -128,6 +137,28 @@ impl Renderer {
                 }
 
                 vertex_buffer.needs_update = false;
+            }
+        }
+        
+        for interleaved_vertex_buffer in &mut geometry.interleaved_vertex_buffers {
+            if !self.webgl_buffers.contains_key(&interleaved_vertex_buffer.id) {
+                let webgl_buffer = self.gl.create_buffer().unwrap();
+                self.webgl_buffers.insert(interleaved_vertex_buffer.id, webgl_buffer);
+            }
+
+            if interleaved_vertex_buffer.needs_update {
+                let webgl_buffer = self.webgl_buffers.get(&interleaved_vertex_buffer.id).unwrap();
+                self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
+
+                unsafe {
+                    self.gl.buffer_data_with_array_buffer_view(
+                        WebGl2RenderingContext::ARRAY_BUFFER,
+                        &js_sys::Uint8Array::view(&interleaved_vertex_buffer.data),
+                        WebGl2RenderingContext::STATIC_DRAW,
+                    );
+                }
+
+                interleaved_vertex_buffer.needs_update = false;
             }
         }
 

@@ -35,7 +35,7 @@ void main() {
     let size = 1024;
 
     let mut material = Material::new(vertex_shader_source, fragment_shader_source);
-    let mut geometry = Geometry::quad_instanced_and_interleaved(size * size);
+    let mut geometry = Geometry::quad_instanced(size * size);
     let mut transforms = Vec::new();
 
     for x in 0..size {
@@ -61,7 +61,7 @@ void main() {
 
         for (vertex_index, transform) in transforms.iter_mut().enumerate() {
             transform.rotation += vertex_index as f32 * 0.0001;
-            transform_buffer.update_vertex("transform", vertex_index, &transform.to_array());
+            transform_buffer.update_vertex(vertex_index, &transform.to_array());
         }
 
         renderer.render(&mut material, &mut geometry);

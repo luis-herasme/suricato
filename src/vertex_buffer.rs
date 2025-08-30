@@ -357,14 +357,8 @@ pub struct VertexBuffer {
     pub data: Vec<u8>,
 
     /// Describes how the data inside [`data`] is laid out.
-    ///
-    /// Each entry in this vector corresponds to an attribute (e.g.,
-    /// position, normal, color). If the vector contains more than one
-    /// layout, the data is interleaved.
-    pub layout: Vec<VertexLayout>,
+    pub layout: VertexLayout,
 
-    /// Marks whether the GPU buffer needs to be updated.
-    ///
     /// If `true`, the renderer should re-upload [`data`] to the GPU.
     pub needs_update: bool,
 }
@@ -386,30 +380,83 @@ impl VertexBuffer {
             id:           generate_id(),
             needs_update: true,
             data:         vertex.data.to_bytes().to_vec(),
-            layout:       vec![layout],
+            layout:       layout,
         }
     }
 
-    pub fn vertex_count(&self) -> usize {
-        for layout in &self.layout {
-            return self.data.len() / layout.stride;
-        }
-
-        unreachable!("All vertex buffers should have at least 1 layout");
+    /// Writes raw bytes into the buffer at a specific byte offset.
+    #[inline]
+    pub fn update<T>(&mut self, byte_offset: usize, value: &[T]) {
+        let bytes = to_bytes(&value);
+        self.data[byte_offset..byte_offset + bytes.len()].copy_from_slice(bytes);
+        self.needs_update = true;
     }
 
-    pub fn interleaved_vertices(data: Vec<VertexData>) -> VertexBuffer {
-        let layout = VertexLayout::from_vertex_array(&data);
+    #[inline]
+    pub fn update_vertex<T>(&mut self, vertex_index: usize, value: &[T]) {
+        self.update(vertex_index * self.layout.stride, value);
+    }
+}
+
+pub struct InterleavedVertexBuffer {
+    /// Unique identifier for this buffer.
+    pub id: u64,
+
+    /// Raw byte representation of the vertex data.
+    ///
+    /// Modifying this field directly does not affect the GPU copy of
+    /// the buffer. After editing, set [`needs_update`] to `true` to
+    /// signal that the buffer should be re-uploaded to the GPU.
+    pub data: Vec<u8>,
+
+    /// Describes how the data inside [`data`] is laid out.
+    pub layouts: Vec<VertexLayout>,
+
+    /// If `true`, the renderer should re-upload [`data`] to the GPU.
+    pub needs_update: bool,
+}
+
+impl InterleavedVertexBuffer {
+    pub fn new(data: Vec<VertexData>) -> InterleavedVertexBuffer {
+        let layouts = VertexLayout::from_vertex_array(&data);
 
         let data: Vec<Data> = data.into_iter().map(|x| x.data).collect();
-        let data = VertexBuffer::interleaved_buffer_from_vertex_data_array(&data, &layout);
+        let data = InterleavedVertexBuffer::vertex_data_array_to_bytes(&data, &layouts);
 
-        VertexBuffer {
+        InterleavedVertexBuffer {
             id: generate_id(),
             needs_update: true,
             data,
-            layout,
+            layouts,
         }
+    }
+
+    fn vertex_data_array_to_bytes(vertex_data_array: &Vec<Data>, layout_array: &Vec<VertexLayout>) -> Vec<u8> {
+        let vertex_count = vertex_data_array[0].count();
+        let stride = layout_array[0].stride;
+
+        let mut interleaved_buffer = vec![0; stride * vertex_count];
+
+        for i in 0..vertex_data_array.len() {
+            let vertex = &vertex_data_array[i];
+            let offset = &layout_array[i].offset;
+
+            for vertex_index in 0..vertex_count {
+                let vertex_size_in_bytes = vertex.size_in_bytes();
+
+                let source_start = vertex_index * vertex_size_in_bytes;
+                let source_final = source_start + vertex_size_in_bytes;
+
+                let vertex_byte_index = vertex_index * stride + offset;
+
+                let destination_start = vertex_byte_index;
+                let destination_final = vertex_byte_index + vertex_size_in_bytes;
+
+                interleaved_buffer[destination_start..destination_final].copy_from_slice(&vertex.to_bytes()[source_start..source_final]);
+            }
+        }
+
+        interleaved_buffer
     }
 
     /// Writes raw bytes into the buffer at a specific byte offset.
@@ -439,7 +486,7 @@ impl VertexBuffer {
     /// This is useful for interlaved VertexBuffers.
     #[inline]
     pub fn get_vertex_byte_offset(&self, attribute_name: &str, vertex_index: usize) -> Option<usize> {
-        for layout in &self.layout {
+        for layout in &self.layouts {
             if layout.name != attribute_name {
                 continue;
             }
@@ -448,33 +495,5 @@ impl VertexBuffer {
         }
 
         None
-    }
-
-    fn interleaved_buffer_from_vertex_data_array(vertex_data_array: &Vec<Data>, layout_array: &Vec<VertexLayout>) -> Vec<u8> {
-        let vertex_count = vertex_data_array[0].count();
-        let stride = layout_array[0].stride;
-
-        let mut interleaved_buffer = vec![0; stride * vertex_count];
-
-        for i in 0..vertex_data_array.len() {
-            let vertex = &vertex_data_array[i];
-            let offset = &layout_array[i].offset;
-
-            for vertex_index in 0..vertex_count {
-                let vertex_size_in_bytes = vertex.size_in_bytes();
-
-                let source_start = vertex_index * vertex_size_in_bytes;
-                let source_final = source_start + vertex_size_in_bytes;
-
-                let vertex_byte_index = vertex_index * stride + offset;
-
-                let destination_start = vertex_byte_index;
-                let destination_final = vertex_byte_index + vertex_size_in_bytes;
-
-                interleaved_buffer[destination_start..destination_final].copy_from_slice(&vertex.to_bytes()[source_start..source_final]);
-            }
-        }
-
-        interleaved_buffer
     }
 }
