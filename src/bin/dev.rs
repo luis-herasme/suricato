@@ -57,9 +57,11 @@ void main() {
 
         renderer.clear();
 
+        let transform_buffer = geometry.get_vertex_buffer("transform").unwrap();
+
         for (vertex_index, transform) in transforms.iter_mut().enumerate() {
             transform.rotation += vertex_index as f32 * 0.0001;
-            geometry.update_vertex("transform", vertex_index, &transform.to_array());
+            transform_buffer.update_vertex("transform", vertex_index, &transform.to_array());
         }
 
         renderer.render(&mut material, &mut geometry);

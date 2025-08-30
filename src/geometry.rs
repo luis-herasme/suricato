@@ -12,12 +12,22 @@ pub struct Geometry {
 }
 
 impl Geometry {
-    pub fn update_vertex<T>(&mut self, name: &str, vertex_index: usize, value: &[T]) {
+    /// Returns a mutable reference to the [`VertexBuffer`] that contains the
+    /// specified vertex attribute, if it exists.
+    ///
+    /// # Note:
+    /// - A single `VertexBuffer` can store multiple attributes when interleaved.
+    ///   Mutating it directly may unintentionally affect other attributes.
+    pub fn get_vertex_buffer(&mut self, name: &str) -> Option<&mut VertexBuffer> {
         for vertex_buffer in &mut self.vertex_buffers {
-            if vertex_buffer.update_vertex(name, vertex_index, value) {
-                return;
+            for layout in &vertex_buffer.layout {
+                if layout.name == name {
+                    return Some(vertex_buffer);
+                }
             }
         }
+
+        None
     }
 
     pub fn quad() -> Geometry {
