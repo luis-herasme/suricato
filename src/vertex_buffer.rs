@@ -33,8 +33,8 @@ pub struct VertexLayout {
     pub component_count:   u8,
     pub component_type:    VertexComponentType,
     pub normalize:         bool,
-    pub stride:            u8,
-    pub offset:            u8,
+    pub stride:            usize,
+    pub offset:            usize,
     pub divisor:           u32,
     pub number_of_columns: u8,
 }
@@ -47,7 +47,7 @@ impl VertexLayout {
         let mut current_offset = 0;
 
         for vertex in vertex_array {
-            let alignment = vertex.data.component_type().size_in_bytes();
+            let alignment = vertex.data.component_type().size_in_bytes() as usize;
 
             max_alignment = max_alignment.max(alignment);
             current_offset = VertexLayout::align_to(current_offset, alignment);
@@ -63,7 +63,7 @@ impl VertexLayout {
                 number_of_columns: vertex.data.number_of_columns(),
             };
 
-            current_offset += vertex.data.component_count() * vertex.data.component_type().size_in_bytes();
+            current_offset += (vertex.data.component_count() * vertex.data.component_type().size_in_bytes()) as usize;
             vertex_layouts.push(layout);
         }
 
@@ -90,7 +90,7 @@ impl VertexLayout {
     /// assert_eq!(VertexLayout::align_to(5, 4), 8);  // 5 aligned to 4-byte boundary = 8
     /// assert_eq!(VertexLayout::align_to(8, 4), 8);  // 8 is already aligned
     /// ```
-    fn align_to(value: u8, alignment: u8) -> u8 {
+    fn align_to(value: usize, alignment: usize) -> usize {
         if alignment == 0 {
             return value;
         }
@@ -490,7 +490,7 @@ impl VertexBuffer {
             component_count:   vertex.data.component_count(),
             component_type:    vertex.data.component_type(),
             normalize:         vertex.normalize,
-            stride:            vertex.data.component_count() * vertex.data.component_type().size_in_bytes(),
+            stride:            (vertex.data.component_count() * vertex.data.component_type().size_in_bytes()) as usize,
             offset:            0,
             divisor:           vertex.divisor,
             number_of_columns: vertex.data.number_of_columns(),

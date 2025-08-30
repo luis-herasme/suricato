@@ -153,7 +153,7 @@ impl MaterialResource {
 
             for i in 0..(attribute.number_of_columns) {
                 let column_location = location + i as u32;
-                let offset = attribute.offset + i * components_per_column * attribute.component_type.size_in_bytes();
+                let offset = attribute.offset + (i * components_per_column * attribute.component_type.size_in_bytes()) as usize;
 
                 self.gl.enable_vertex_attrib_array(column_location);
                 self.gl.vertex_attrib_pointer_with_i32(
