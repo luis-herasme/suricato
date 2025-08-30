@@ -63,9 +63,9 @@ impl Renderer {
         }
 
         // Set attributes
-        for vertex_data in &geometry.vertex_buffers {
-            let buffer = self.webgl_buffers.get(&vertex_data.id).unwrap(); // Created at create_geometry_resource
-            material_resource.set_attribute_buffer(vertex_data, buffer);
+        for vertex_buffer in &geometry.vertex_buffers {
+            let buffer = self.webgl_buffers.get(&vertex_buffer.id).unwrap(); // Created at create_geometry_resource
+            material_resource.set_attribute_buffer(vertex_buffer, buffer);
         }
 
         if let Some(indices) = &geometry.indices {
@@ -109,25 +109,25 @@ impl Renderer {
     }
 
     fn geometry_buffers_create(&mut self, geometry: &mut Geometry) {
-        for vertex_data in &mut geometry.vertex_buffers {
-            if !self.webgl_buffers.contains_key(&vertex_data.id) {
+        for vertex_buffer in &mut geometry.vertex_buffers {
+            if !self.webgl_buffers.contains_key(&vertex_buffer.id) {
                 let webgl_buffer = self.gl.create_buffer().unwrap();
-                self.webgl_buffers.insert(vertex_data.id, webgl_buffer);
+                self.webgl_buffers.insert(vertex_buffer.id, webgl_buffer);
             }
 
-            if vertex_data.needs_update {
-                let webgl_buffer = self.webgl_buffers.get(&vertex_data.id).unwrap();
+            if vertex_buffer.needs_update {
+                let webgl_buffer = self.webgl_buffers.get(&vertex_buffer.id).unwrap();
                 self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
 
                 unsafe {
                     self.gl.buffer_data_with_array_buffer_view(
                         WebGl2RenderingContext::ARRAY_BUFFER,
-                        &js_sys::Uint8Array::view(&vertex_data.data),
+                        &js_sys::Uint8Array::view(&vertex_buffer.data),
                         WebGl2RenderingContext::STATIC_DRAW,
                     );
                 }
 
-                vertex_data.needs_update = false;
+                vertex_buffer.needs_update = false;
             }
         }
 
