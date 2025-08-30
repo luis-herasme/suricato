@@ -12,31 +12,9 @@ pub struct Geometry {
 }
 
 impl Geometry {
-    pub fn set_vertex_at_f32(&mut self, name: &str, index: usize, value: f32) {
+    pub fn update_vertex<T>(&mut self, name: &str, vertex_index: usize, value: &[T]) {
         for vertex_buffer in &mut self.vertex_buffers {
-            let value_was_set = vertex_buffer.set_vertex_at_f32(name, index, value);
-
-            if value_was_set {
-                return;
-            }
-        }
-    }
-
-    pub fn set_vertex_at_mat3(&mut self, name: &str, index: usize, value: [f32; 9]) {
-        for vertex_buffer in &mut self.vertex_buffers {
-            let value_was_set = vertex_buffer.set_vertex_at_mat3(name, index, value);
-
-            if value_was_set {
-                return;
-            }
-        }
-    }
-
-    pub fn set_vertex_at_mat4(&mut self, name: &str, index: usize, value: [f32; 16]) {
-        for vertex_buffer in &mut self.vertex_buffers {
-            let value_was_set = vertex_buffer.set_vertex_at_mat4(name, index, value);
-
-            if value_was_set {
+            if vertex_buffer.update_vertex(name, vertex_index, value) {
                 return;
             }
         }

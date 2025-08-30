@@ -420,46 +420,16 @@ impl VertexBuffer {
         }
     }
 
-    pub fn set_vertex_at_f32(&mut self, name: &str, index: usize, value: f32) -> bool {
+    pub fn update_vertex<T>(&mut self, name: &str, vertex_index: usize, value: &[T]) -> bool {
         for layout in &self.layout {
             if layout.name != name {
                 continue;
             }
 
-            let byte_index = index * layout.stride as usize + layout.offset as usize;
-            self.data[byte_index..byte_index + 4].copy_from_slice(&value.to_ne_bytes());
-            self.needs_update = true;
+            let byte_index = vertex_index * layout.stride + layout.offset;
+            let bytes = to_bytes(&value);
 
-            return true;
-        }
-
-        false
-    }
-
-    pub fn set_vertex_at_mat3(&mut self, name: &str, index: usize, value: [f32; 9]) -> bool {
-        for layout in &self.layout {
-            if layout.name != name {
-                continue;
-            }
-
-            let byte_index = index * layout.stride as usize + layout.offset as usize;
-            self.data[byte_index..byte_index + 9 * 4].copy_from_slice(to_bytes(&value));
-            self.needs_update = true;
-
-            return true;
-        }
-
-        false
-    }
-
-    pub fn set_vertex_at_mat4(&mut self, name: &str, index: usize, value: [f32; 16]) -> bool {
-        for layout in &self.layout {
-            if layout.name != name {
-                continue;
-            }
-
-            let byte_index = index * layout.stride as usize + layout.offset as usize;
-            self.data[byte_index..byte_index + 16 * 4].copy_from_slice(to_bytes(&value));
+            self.data[byte_index..byte_index + bytes.len()].copy_from_slice(bytes);
             self.needs_update = true;
 
             return true;
