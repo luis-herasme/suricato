@@ -105,6 +105,8 @@ impl VertexLayout {
     }
 }
 
+/// A temporary container for a single attribute's raw data (e.g., a Vec of positions)
+/// before it's processed into a VertexBuffer.
 pub struct VertexData {
     pub name:      String,
     pub data:      Data,
