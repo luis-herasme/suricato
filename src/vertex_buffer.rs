@@ -356,12 +356,6 @@ pub struct VertexBuffer {
     /// between multiple vertex buffers.
     pub id: u64,
 
-    /// Number of vertices stored in this buffer.
-    ///
-    /// This is derived from the length of the raw data divided by
-    /// the stride of the vertex layout.
-    pub count: usize,
-
     /// Raw byte representation of the vertex data.
     ///
     /// Modifying this field directly does not affect the GPU copy of
@@ -398,23 +392,28 @@ impl VertexBuffer {
         VertexBuffer {
             id:           generate_id(),
             needs_update: true,
-            count:        vertex.data.count(),
             data:         vertex.data.to_bytes().to_vec(),
             layout:       vec![layout],
         }
+    }
+
+    pub fn vertex_count(&self) -> usize {
+        for layout in &self.layout {
+            return self.data.len() / layout.stride;
+        }
+
+        unreachable!("All vertex buffers should have at least 1 layout");
     }
 
     pub fn interleaved_vertices(data: Vec<VertexData>) -> VertexBuffer {
         let layout = VertexLayout::from_vertex_array(&data);
 
         let data: Vec<Data> = data.into_iter().map(|x| x.data).collect();
-        let count = data[0].count();
         let data = VertexBuffer::interleaved_buffer_from_vertex_data_array(&data, &layout);
 
         VertexBuffer {
             id: generate_id(),
             needs_update: true,
-            count,
             data,
             layout,
         }
