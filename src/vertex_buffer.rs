@@ -138,6 +138,16 @@ pub enum Data {
     UnsignedIntVec3(Vec<[u32; 3]>),
     UnsignedIntVec4(Vec<[u32; 4]>),
 
+    Short(Vec<i16>),
+    ShortVec2(Vec<[i16; 2]>),
+    ShortVec3(Vec<[i16; 3]>),
+    ShortVec4(Vec<[i16; 4]>),
+
+    UnsignedShort(Vec<i16>),
+    UnsignedShortVec2(Vec<[i16; 2]>),
+    UnsignedShortVec3(Vec<[i16; 3]>),
+    UnsignedShortVec4(Vec<[i16; 4]>),
+
     Mat2(Vec<[f32; 4]>),
     Mat3(Vec<[f32; 9]>),
     Mat4(Vec<[f32; 16]>),
@@ -170,6 +180,16 @@ impl Data {
             Data::UnsignedIntVec2(data) => data.len(),
             Data::UnsignedIntVec3(data) => data.len(),
             Data::UnsignedIntVec4(data) => data.len(),
+
+            Data::Short(data) => data.len(),
+            Data::ShortVec2(data) => data.len(),
+            Data::ShortVec3(data) => data.len(),
+            Data::ShortVec4(data) => data.len(),
+
+            Data::UnsignedShort(data) => data.len(),
+            Data::UnsignedShortVec2(data) => data.len(),
+            Data::UnsignedShortVec3(data) => data.len(),
+            Data::UnsignedShortVec4(data) => data.len(),
 
             Data::Mat2(data) => data.len(),
             Data::Mat3(data) => data.len(),
@@ -204,6 +224,16 @@ impl Data {
             Data::UnsignedIntVec3 { .. } => 3,
             Data::UnsignedIntVec4 { .. } => 4,
 
+            Data::Short { .. } => 1,
+            Data::ShortVec2 { .. } => 2,
+            Data::ShortVec3 { .. } => 3,
+            Data::ShortVec4 { .. } => 4,
+
+            Data::UnsignedShort { .. } => 1,
+            Data::UnsignedShortVec2 { .. } => 2,
+            Data::UnsignedShortVec3 { .. } => 3,
+            Data::UnsignedShortVec4 { .. } => 4,
+
             Data::Mat2 { .. } => 4,
             Data::Mat3 { .. } => 9,
             Data::Mat4 { .. } => 16,
@@ -236,6 +266,16 @@ impl Data {
             Data::UnsignedIntVec2 { .. } => VertexComponentType::UnsignedInt,
             Data::UnsignedIntVec3 { .. } => VertexComponentType::UnsignedInt,
             Data::UnsignedIntVec4 { .. } => VertexComponentType::UnsignedInt,
+
+            Data::Short { .. } => VertexComponentType::Short,
+            Data::ShortVec2 { .. } => VertexComponentType::Short,
+            Data::ShortVec3 { .. } => VertexComponentType::Short,
+            Data::ShortVec4 { .. } => VertexComponentType::Short,
+
+            Data::UnsignedShort { .. } => VertexComponentType::UnsignedShort,
+            Data::UnsignedShortVec2 { .. } => VertexComponentType::UnsignedShort,
+            Data::UnsignedShortVec3 { .. } => VertexComponentType::UnsignedShort,
+            Data::UnsignedShortVec4 { .. } => VertexComponentType::UnsignedShort,
 
             Data::Mat2 { .. } => VertexComponentType::Float,
             Data::Mat3 { .. } => VertexComponentType::Float,
@@ -278,6 +318,16 @@ impl Data {
             Data::UnsignedIntVec2(data) => to_bytes(data),
             Data::UnsignedIntVec3(data) => to_bytes(data),
             Data::UnsignedIntVec4(data) => to_bytes(data),
+
+            Data::Short(data) => to_bytes(data),
+            Data::ShortVec2(data) => to_bytes(data),
+            Data::ShortVec3(data) => to_bytes(data),
+            Data::ShortVec4(data) => to_bytes(data),
+
+            Data::UnsignedShort(data) => to_bytes(data),
+            Data::UnsignedShortVec2(data) => to_bytes(data),
+            Data::UnsignedShortVec3(data) => to_bytes(data),
+            Data::UnsignedShortVec4(data) => to_bytes(data),
 
             Data::Mat2(data) => to_bytes(data),
             Data::Mat3(data) => to_bytes(data),
@@ -349,6 +399,32 @@ impl Data {
                 buffer[vertex_byte_index..vertex_byte_index + 3 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
             Data::UnsignedIntVec4(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
+            }
+
+            Data::Short(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(&data[vertex_byte_index].to_ne_bytes());
+            }
+            Data::ShortVec2(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 2 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
+            }
+            Data::ShortVec3(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 3 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
+            }
+            Data::ShortVec4(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
+            }
+
+            Data::UnsignedShort(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 4].copy_from_slice(&data[vertex_byte_index].to_ne_bytes());
+            }
+            Data::UnsignedShortVec2(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 2 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
+            }
+            Data::UnsignedShortVec3(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 3 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
+            }
+            Data::UnsignedShortVec4(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
 
