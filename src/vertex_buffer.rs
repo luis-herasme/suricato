@@ -255,11 +255,43 @@ impl Data {
     }
 }
 
+/// Represents a buffer of vertex data stored in system memory,
+/// with metadata about how the data should be uploaded to and
+/// interpreted by the GPU.
+///
+/// A `VertexBuffer` contains raw vertex data (`data`) along with
+/// a description of how that data is structured (`layout`).
+/// The GPU-side buffer is not automatically updated when `data` is
+/// modified. To notify the renderer that the GPU copy must be updated,
+/// set [`needs_update`] to `true`.
 pub struct VertexBuffer {
-    pub id:           u64,
-    pub count:        usize,
-    pub data:         Vec<u8>,
-    pub layout:       Vec<VertexLayout>,
+    /// Unique identifier for this buffer, used internally to distinguish
+    /// between multiple vertex buffers.
+    pub id: u64,
+
+    /// Number of vertices stored in this buffer.
+    ///
+    /// This is derived from the length of the raw data divided by
+    /// the stride of the vertex layout.
+    pub count: usize,
+
+    /// Raw byte representation of the vertex data.
+    ///
+    /// Modifying this field directly does not affect the GPU copy of
+    /// the buffer. After editing, set [`needs_update`] to `true` to
+    /// signal that the buffer should be re-uploaded to the GPU.
+    pub data: Vec<u8>,
+
+    /// Describes how the data inside [`data`] is laid out.
+    ///
+    /// Each entry in this vector corresponds to an attribute (e.g.,
+    /// position, normal, color). If the vector contains more than one
+    /// layout, the data is interleaved.
+    pub layout: Vec<VertexLayout>,
+
+    /// Marks whether the GPU buffer needs to be updated.
+    ///
+    /// If `true`, the renderer should re-upload [`data`] to the GPU.
     pub needs_update: bool,
 }
 
