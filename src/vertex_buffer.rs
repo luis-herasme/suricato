@@ -193,7 +193,7 @@ impl Data {
     fn to_bytes(&self) -> &[u8] {
         match &self {
             Data::Byte(data) => to_bytes(data),
-            Data::UByte(data) => &data,
+            Data::UByte(data) => to_bytes(data),
             Data::UnsignedByteVec3(data) => to_bytes(data),
 
             Data::Float(data) => to_bytes(data),
@@ -340,10 +340,8 @@ impl VertexBuffer {
 
         for vertex_index in 0..vertex_count {
             for i in 0..vertex_data_array.len() {
-                let vertex_data = &vertex_data_array[i];
-                let vertex_layout = &layout[i];
-                let vertex_byte_index = vertex_index * stride;
-                vertex_data.write_vertex_bytes(vertex_index, vertex_byte_index + vertex_layout.offset as usize, &mut buffer);
+                let vertex_byte_index = vertex_index * stride + layout[i].offset as usize;
+                vertex_data_array[i].write_vertex_bytes(vertex_index, vertex_byte_index, &mut buffer);
             }
         }
 
