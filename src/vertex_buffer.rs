@@ -245,6 +245,7 @@ impl Data {
 
     fn number_of_columns(&self) -> u8 {
         match &self {
+            Data::Mat2 { .. } => 2,
             Data::Mat3 { .. } => 3,
             Data::Mat4 { .. } => 4,
             _ => 1,
