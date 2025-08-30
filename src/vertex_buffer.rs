@@ -143,10 +143,10 @@ pub enum Data {
     ShortVec3(Vec<[i16; 3]>),
     ShortVec4(Vec<[i16; 4]>),
 
-    UnsignedShort(Vec<i16>),
-    UnsignedShortVec2(Vec<[i16; 2]>),
-    UnsignedShortVec3(Vec<[i16; 3]>),
-    UnsignedShortVec4(Vec<[i16; 4]>),
+    UnsignedShort(Vec<u16>),
+    UnsignedShortVec2(Vec<[u16; 2]>),
+    UnsignedShortVec3(Vec<[u16; 3]>),
+    UnsignedShortVec4(Vec<[u16; 4]>),
 
     Mat2(Vec<[f32; 4]>),
     Mat3(Vec<[f32; 9]>),
