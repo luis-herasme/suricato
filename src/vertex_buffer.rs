@@ -190,23 +190,23 @@ impl Data {
         }
     }
 
-    fn to_bytes(&self) -> Vec<u8> {
+    fn to_bytes(&self) -> &[u8] {
         match &self {
-            Data::Byte(data) => to_bytes(data).to_vec(),
-            Data::UByte(data) => data.clone(),
-            Data::UnsignedByteVec3(data) => to_bytes(data).to_vec(),
+            Data::Byte(data) => to_bytes(data),
+            Data::UByte(data) => &data,
+            Data::UnsignedByteVec3(data) => to_bytes(data),
 
-            Data::Float(data) => to_bytes(data).to_vec(),
-            Data::Vec2(data) => to_bytes(data).to_vec(),
-            Data::Vec3(data) => to_bytes(data).to_vec(),
-            Data::Vec4(data) => to_bytes(data).to_vec(),
+            Data::Float(data) => to_bytes(data),
+            Data::Vec2(data) => to_bytes(data),
+            Data::Vec3(data) => to_bytes(data),
+            Data::Vec4(data) => to_bytes(data),
 
-            Data::Int(data) => to_bytes(data).to_vec(),
-            Data::IntVec2(data) => to_bytes(data).to_vec(),
-            Data::IntVec3(data) => to_bytes(data).to_vec(),
-            Data::IntVec4(data) => to_bytes(data).to_vec(),
+            Data::Int(data) => to_bytes(data),
+            Data::IntVec2(data) => to_bytes(data),
+            Data::IntVec3(data) => to_bytes(data),
+            Data::IntVec4(data) => to_bytes(data),
 
-            Data::Mat4(data) => to_bytes(data).to_vec(),
+            Data::Mat4(data) => to_bytes(data),
         }
     }
 
@@ -279,7 +279,7 @@ impl VertexBuffer {
             id:           generate_id(),
             needs_update: true,
             count:        vertex.data.count(),
-            data:         vertex.data.to_bytes(),
+            data:         vertex.data.to_bytes().to_vec(),
             layout:       vec![layout],
         }
     }
