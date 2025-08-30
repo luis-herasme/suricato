@@ -29,13 +29,14 @@ impl VertexComponentType {
 }
 
 pub struct VertexLayout {
-    pub name:            String,
-    pub component_count: u8,
-    pub component_type:  VertexComponentType,
-    pub normalize:       bool,
-    pub stride:          u8,
-    pub offset:          u8,
-    pub divisor:         u32,
+    pub name:              String,
+    pub component_count:   u8,
+    pub component_type:    VertexComponentType,
+    pub normalize:         bool,
+    pub stride:            u8,
+    pub offset:            u8,
+    pub divisor:           u32,
+    pub number_of_columns: u8,
 }
 
 impl VertexLayout {
@@ -52,13 +53,14 @@ impl VertexLayout {
             current_offset = VertexLayout::align_to(current_offset, alignment);
 
             let layout = VertexLayout {
-                name:            vertex.name.clone(),
-                component_count: vertex.data.component_count(),
-                component_type:  vertex.data.component_type(),
-                normalize:       vertex.normalize,
-                offset:          current_offset,
-                stride:          0, // Will be populated after the loop
-                divisor:         vertex.divisor,
+                name:              vertex.name.clone(),
+                component_count:   vertex.data.component_count(),
+                component_type:    vertex.data.component_type(),
+                normalize:         vertex.normalize,
+                offset:            current_offset,
+                stride:            0, // Will be populated after the loop
+                divisor:           vertex.divisor,
+                number_of_columns: vertex.data.number_of_columns(),
             };
 
             current_offset += vertex.data.component_count() * vertex.data.component_type().size_in_bytes();
@@ -126,6 +128,7 @@ pub enum Data {
     IntVec3(Vec<[i32; 3]>),
     IntVec4(Vec<[i32; 4]>),
 
+    Mat3(Vec<[f32; 9]>),
     Mat4(Vec<[f32; 16]>),
 }
 
@@ -146,6 +149,7 @@ impl Data {
             Data::IntVec3(data) => data.len(),
             Data::IntVec4(data) => data.len(),
 
+            Data::Mat3(data) => data.len(),
             Data::Mat4(data) => data.len(),
         }
     }
@@ -166,6 +170,7 @@ impl Data {
             Data::IntVec3 { .. } => 3,
             Data::IntVec4 { .. } => 4,
 
+            Data::Mat3 { .. } => 9,
             Data::Mat4 { .. } => 16,
         }
     }
@@ -186,7 +191,16 @@ impl Data {
             Data::IntVec3 { .. } => VertexComponentType::Int,
             Data::IntVec4 { .. } => VertexComponentType::Int,
 
+            Data::Mat3 { .. } => VertexComponentType::Float,
             Data::Mat4 { .. } => VertexComponentType::Float,
+        }
+    }
+
+    fn number_of_columns(&self) -> u8 {
+        match &self {
+            Data::Mat3 { .. } => 3,
+            Data::Mat4 { .. } => 4,
+            _ => 1,
         }
     }
 
@@ -206,6 +220,7 @@ impl Data {
             Data::IntVec3(data) => to_bytes(data),
             Data::IntVec4(data) => to_bytes(data),
 
+            Data::Mat3(data) => to_bytes(data),
             Data::Mat4(data) => to_bytes(data),
         }
     }
@@ -248,6 +263,9 @@ impl Data {
                 buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
 
+            Data::Mat3(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 9 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
+            }
             Data::Mat4(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 16 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
@@ -298,13 +316,14 @@ pub struct VertexBuffer {
 impl VertexBuffer {
     pub fn new(vertex: VertexData) -> VertexBuffer {
         let layout = VertexLayout {
-            name:            vertex.name.clone(),
-            component_count: vertex.data.component_count(),
-            component_type:  vertex.data.component_type(),
-            normalize:       vertex.normalize,
-            stride:          vertex.data.component_count() * vertex.data.component_type().size_in_bytes(),
-            offset:          0,
-            divisor:         vertex.divisor,
+            name:              vertex.name.clone(),
+            component_count:   vertex.data.component_count(),
+            component_type:    vertex.data.component_type(),
+            normalize:         vertex.normalize,
+            stride:            vertex.data.component_count() * vertex.data.component_type().size_in_bytes(),
+            offset:            0,
+            divisor:           vertex.divisor,
+            number_of_columns: vertex.data.number_of_columns(),
         };
 
         VertexBuffer {
@@ -348,6 +367,22 @@ impl VertexBuffer {
         false
     }
 
+    pub fn set_vertex_at_mat3(&mut self, name: &str, index: usize, value: [f32; 9]) -> bool {
+        for layout in &self.layout {
+            if layout.name != name {
+                continue;
+            }
+
+            let byte_index = index * layout.stride as usize + layout.offset as usize;
+            self.data[byte_index..byte_index + 9 * 4].copy_from_slice(to_bytes(&value));
+            self.needs_update = true;
+
+            return true;
+        }
+
+        false
+    }
+
     pub fn set_vertex_at_mat4(&mut self, name: &str, index: usize, value: [f32; 16]) -> bool {
         for layout in &self.layout {
             if layout.name != name {
@@ -355,7 +390,7 @@ impl VertexBuffer {
             }
 
             let byte_index = index * layout.stride as usize + layout.offset as usize;
-            self.data[byte_index..byte_index + 64].copy_from_slice(to_bytes(&value));
+            self.data[byte_index..byte_index + 16 * 4].copy_from_slice(to_bytes(&value));
             self.needs_update = true;
 
             return true;

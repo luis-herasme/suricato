@@ -1,7 +1,6 @@
 use std::{rc::Rc, sync::Mutex};
 
-use glam::Quat;
-use suricato::{geometry::Geometry, material::Material, renderer::Renderer, transform::Transform3D};
+use suricato::{geometry::Geometry, material::Material, renderer::Renderer, transform::Transform2D};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::console;
 
@@ -12,12 +11,12 @@ fn main() {
 in vec2 position;
 in vec3 color;
 
-in mat4 transform;
+in mat3 transform;
 out vec4 v_color;
 
 void main() {
     v_color = vec4(color, 1.0);
-    gl_Position = transform * vec4(position, 0.0, 1.0);
+    gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
 }
 "#;
     let fragment_shader_source = r#"#version 300 es
@@ -33,7 +32,7 @@ void main() {
 
     let mut renderer = Renderer::new();
 
-    let size = 512;
+    let size = 1024;
 
     let mut material = Material::new(vertex_shader_source, fragment_shader_source);
     let mut geometry = Geometry::quad_instanced_and_interleaved(size * size);
@@ -41,7 +40,7 @@ void main() {
 
     for x in 0..size {
         for y in 0..size {
-            let mut transform = Transform3D::new();
+            let mut transform = Transform2D::new();
             transform.scale *= 0.005;
             transform.translation.x = 1.85 * (x as f32 - size as f32 / 2.0) / size as f32;
             transform.translation.y = 1.85 * (y as f32 - size as f32 / 2.0) / size as f32;
@@ -59,8 +58,8 @@ void main() {
         renderer.clear();
 
         for (i, transform) in transforms.iter_mut().enumerate() {
-            transform.rotation = transform.rotation.mul_quat(Quat::from_rotation_z(i as f32 * 0.0001));
-            geometry.set_vertex_at_mat4("transform", i, transform.to_array());
+            transform.rotation += i as f32 * 0.0001;
+            geometry.set_vertex_at_mat3("transform", i, transform.to_array());
         }
 
         renderer.render(&mut material, &mut geometry);

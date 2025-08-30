@@ -130,7 +130,7 @@ impl MaterialResource {
         for attribute in &attributes.layout {
             let location = self.attribute_locations.get(&attribute.name).unwrap();
 
-            if attribute.component_count <= 4 {
+            if attribute.number_of_columns == 1 {
                 self.gl.enable_vertex_attrib_array(*location);
                 self.gl.vertex_attrib_pointer_with_i32(
                     *location,
@@ -144,21 +144,29 @@ impl MaterialResource {
                 if attribute.divisor != 0 {
                     self.gl.vertex_attrib_divisor(*location, attribute.divisor);
                 }
-            } else {
-                for i in 0..(attribute.component_count as u32 / 4) {
-                    self.gl.enable_vertex_attrib_array(*location + i);
-                    self.gl.vertex_attrib_pointer_with_i32(
-                        *location + i,
-                        4,
-                        attribute.component_type as u32,
-                        attribute.normalize,
-                        (attribute.component_count * attribute.component_type.size_in_bytes()) as i32,
-                        (i as u8 * 4 * attribute.component_type.size_in_bytes()) as i32,
-                    );
 
-                    if attribute.divisor != 0 {
-                        self.gl.vertex_attrib_divisor(*location + i, attribute.divisor);
-                    }
+                continue;
+            }
+
+            // Only matrices have more than one column
+            let components_per_column = attribute.component_count / attribute.number_of_columns;
+
+            for i in 0..(attribute.number_of_columns) {
+                let column_location = location + i as u32;
+                let offset = attribute.offset + i * components_per_column * attribute.component_type.size_in_bytes();
+
+                self.gl.enable_vertex_attrib_array(column_location);
+                self.gl.vertex_attrib_pointer_with_i32(
+                    column_location,
+                    components_per_column as i32,
+                    attribute.component_type as u32,
+                    attribute.normalize,
+                    attribute.stride as i32,
+                    offset as i32,
+                );
+
+                if attribute.divisor != 0 {
+                    self.gl.vertex_attrib_divisor(column_location, attribute.divisor);
                 }
             }
         }

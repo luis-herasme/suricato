@@ -1,6 +1,6 @@
 use crate::{
     index_buffer::IndexBuffer,
-    transform::Transform3D,
+    transform::Transform2D,
     vertex_buffer::{Data, VertexBuffer, VertexData},
 };
 
@@ -15,6 +15,16 @@ impl Geometry {
     pub fn set_vertex_at_f32(&mut self, name: &str, index: usize, value: f32) {
         for vertex_buffer in &mut self.vertex_buffers {
             let value_was_set = vertex_buffer.set_vertex_at_f32(name, index, value);
+
+            if value_was_set {
+                return;
+            }
+        }
+    }
+
+    pub fn set_vertex_at_mat3(&mut self, name: &str, index: usize, value: [f32; 9]) {
+        for vertex_buffer in &mut self.vertex_buffers {
+            let value_was_set = vertex_buffer.set_vertex_at_mat3(name, index, value);
 
             if value_was_set {
                 return;
@@ -121,12 +131,12 @@ impl Geometry {
         let mut trasnforms = Vec::with_capacity(count);
 
         for _ in 0..count {
-            trasnforms.push(Transform3D::new().to_array());
+            trasnforms.push(Transform2D::new().to_array());
         }
 
         let instance_buffer = VertexBuffer::new(VertexData {
             name:      String::from("transform"),
-            data:      Data::Mat4(trasnforms),
+            data:      Data::Mat3(trasnforms),
             normalize: false,
             divisor:   1,
         });
