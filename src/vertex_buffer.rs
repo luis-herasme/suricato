@@ -128,6 +128,7 @@ pub enum Data {
     IntVec3(Vec<[i32; 3]>),
     IntVec4(Vec<[i32; 4]>),
 
+    Mat2(Vec<[f32; 4]>),
     Mat3(Vec<[f32; 9]>),
     Mat4(Vec<[f32; 16]>),
 }
@@ -149,6 +150,7 @@ impl Data {
             Data::IntVec3(data) => data.len(),
             Data::IntVec4(data) => data.len(),
 
+            Data::Mat2(data) => data.len(),
             Data::Mat3(data) => data.len(),
             Data::Mat4(data) => data.len(),
         }
@@ -170,6 +172,7 @@ impl Data {
             Data::IntVec3 { .. } => 3,
             Data::IntVec4 { .. } => 4,
 
+            Data::Mat2 { .. } => 4,
             Data::Mat3 { .. } => 9,
             Data::Mat4 { .. } => 16,
         }
@@ -191,6 +194,7 @@ impl Data {
             Data::IntVec3 { .. } => VertexComponentType::Int,
             Data::IntVec4 { .. } => VertexComponentType::Int,
 
+            Data::Mat2 { .. } => VertexComponentType::Float,
             Data::Mat3 { .. } => VertexComponentType::Float,
             Data::Mat4 { .. } => VertexComponentType::Float,
         }
@@ -220,6 +224,7 @@ impl Data {
             Data::IntVec3(data) => to_bytes(data),
             Data::IntVec4(data) => to_bytes(data),
 
+            Data::Mat2(data) => to_bytes(data),
             Data::Mat3(data) => to_bytes(data),
             Data::Mat4(data) => to_bytes(data),
         }
@@ -263,6 +268,9 @@ impl Data {
                 buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
 
+            Data::Mat2(data) => {
+                buffer[vertex_byte_index..vertex_byte_index + 4 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
+            }
             Data::Mat3(data) => {
                 buffer[vertex_byte_index..vertex_byte_index + 9 * 4].copy_from_slice(to_bytes(&data[vertex_index]));
             }
