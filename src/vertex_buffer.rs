@@ -345,15 +345,8 @@ impl Data {
 /// Represents a buffer of vertex data stored in system memory,
 /// with metadata about how the data should be uploaded to and
 /// interpreted by the GPU.
-///
-/// A `VertexBuffer` contains raw vertex data (`data`) along with
-/// a description of how that data is structured (`layout`).
-/// The GPU-side buffer is not automatically updated when `data` is
-/// modified. To notify the renderer that the GPU copy must be updated,
-/// set [`needs_update`] to `true`.
 pub struct VertexBuffer {
-    /// Unique identifier for this buffer, used internally to distinguish
-    /// between multiple vertex buffers.
+    /// Unique identifier for this buffer.
     pub id: u64,
 
     /// Raw byte representation of the vertex data.
