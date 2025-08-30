@@ -133,10 +133,10 @@ pub enum Data {
     IntVec3(Vec<[i32; 3]>),
     IntVec4(Vec<[i32; 4]>),
 
-    UnsignedInt(Vec<i32>),
-    UnsignedIntVec2(Vec<[i32; 2]>),
-    UnsignedIntVec3(Vec<[i32; 3]>),
-    UnsignedIntVec4(Vec<[i32; 4]>),
+    UnsignedInt(Vec<u32>),
+    UnsignedIntVec2(Vec<[u32; 2]>),
+    UnsignedIntVec3(Vec<[u32; 3]>),
+    UnsignedIntVec4(Vec<[u32; 4]>),
 
     Mat2(Vec<[f32; 4]>),
     Mat3(Vec<[f32; 9]>),
