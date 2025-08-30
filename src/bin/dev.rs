@@ -1,7 +1,7 @@
 use std::{rc::Rc, sync::Mutex};
 
 use glam::Quat;
-use suricato::{geometry::Geometry, material::Material, renderer::Renderer, transform::Transform};
+use suricato::{geometry::Geometry, material::Material, renderer::Renderer, transform::Transform3D};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::console;
 
@@ -41,7 +41,7 @@ void main() {
 
     for x in 0..size {
         for y in 0..size {
-            let mut transform = Transform::new();
+            let mut transform = Transform3D::new();
             transform.scale *= 0.005;
             transform.translation.x = 1.85 * (x as f32 - size as f32 / 2.0) / size as f32;
             transform.translation.y = 1.85 * (y as f32 - size as f32 / 2.0) / size as f32;

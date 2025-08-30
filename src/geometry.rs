@@ -1,6 +1,6 @@
 use crate::{
     index_buffer::IndexBuffer,
-    transform::Transform,
+    transform::Transform3D,
     vertex_buffer::{Data, VertexBuffer, VertexData},
 };
 
@@ -121,7 +121,7 @@ impl Geometry {
         let mut trasnforms = Vec::with_capacity(count);
 
         for _ in 0..count {
-            trasnforms.push(Transform::new().to_array());
+            trasnforms.push(Transform3D::new().to_array());
         }
 
         let instance_buffer = VertexBuffer::new(VertexData {
