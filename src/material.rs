@@ -90,7 +90,7 @@ impl MaterialResource {
     }
 
     /// UNIFORMS
-    pub fn set_uniform(&self, uniform_name: &str, uniform: &Uniform) {
+    pub fn set_uniform(&self, uniform_name: &str, uniform: &Uniform, current_texture_unit: u32) {
         let location = self.uniform_locations.get(uniform_name).unwrap();
 
         match uniform {
@@ -99,6 +99,9 @@ impl MaterialResource {
             Uniform::Vec3(v) => self.gl.uniform3fv_with_f32_array(Some(location), v),
             Uniform::Vec4(v) => self.gl.uniform4fv_with_f32_array(Some(location), v),
             Uniform::Mat4(v) => self.gl.uniform_matrix4fv_with_f32_array(Some(location), false, v),
+            Uniform::Texture(_) => {
+                self.gl.active_texture(WebGl2RenderingContext::TEXTURE0 + current_texture_unit);
+            }
         }
     }
 

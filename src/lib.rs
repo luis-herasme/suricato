@@ -3,6 +3,7 @@ pub mod index_buffer;
 pub mod material;
 pub mod mesh;
 pub mod renderer;
+pub mod texture;
 pub mod transform;
 pub mod uniforms;
 pub mod utils;

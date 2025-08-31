@@ -193,12 +193,12 @@ impl Geometry {
             trasnforms.push(Transform2D::new().to_array());
         }
 
-        let instance_buffer = VertexBuffer::new(VertexData {
+        let per_instance_transforms = VertexData {
             name:      String::from("transform"),
             data:      Data::Mat3(trasnforms),
             normalize: false,
             divisor:   1,
-        });
+        };
 
         // Model buffer
         let quad_data: Vec<[f32; 2]> = vec![
@@ -229,17 +229,38 @@ impl Geometry {
             divisor:   0,
         };
 
+        let texture_coordinates_data: Vec<[f32; 2]> = vec![
+            [1.0, 1.0], // Top right
+            [1.0, 0.0], // Bottom right
+            [0.0, 0.0], // Bottom left
+            [0.0, 1.0], // Top left
+        ];
+
+        let texture_coordinate = VertexData {
+            name:      String::from("texture_coordinate"),
+            data:      Data::Vec2(texture_coordinates_data),
+            normalize: true,
+            divisor:   0,
+        };
+
+        let vertex_buffers = vec![
+            VertexBuffer::new(color),
+            VertexBuffer::new(position),
+            VertexBuffer::new(texture_coordinate),
+            VertexBuffer::new(per_instance_transforms),
+        ];
+
         let indices = IndexBuffer::from_u8(vec![
             0, 1, 2, // Triangle #1
             2, 3, 0, // Triangle #2
         ]);
 
         Geometry {
-            vertex_count:               4,
-            indices:                    Some(indices),
-            instance_count:             Some(count),
-            vertex_buffers:             vec![VertexBuffer::new(position), VertexBuffer::new(color), instance_buffer],
+            vertex_count: 4,
+            indices: Some(indices),
+            instance_count: Some(count),
             interleaved_vertex_buffers: vec![],
+            vertex_buffers,
         }
     }
 }

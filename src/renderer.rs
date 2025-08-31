@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
-use web_sys::{js_sys, HtmlCanvasElement, WebGl2RenderingContext, WebGlVertexArrayObject};
+use web_sys::{js_sys, HtmlCanvasElement, WebGl2RenderingContext, WebGlTexture, WebGlVertexArrayObject};
 use web_sys::{WebGlBuffer, wasm_bindgen::JsCast};
 
 use crate::{
-    geometry::Geometry,
-    material::{Material, MaterialResource}, mesh::{Mesh, MeshId},
+    geometry::Geometry, material::{Material, MaterialResource}, mesh::{Mesh, MeshId}, texture::TextureData, uniforms::Uniform
 };
 
 pub struct Renderer {
@@ -13,9 +12,10 @@ pub struct Renderer {
     pub canvas: HtmlCanvasElement,
 
     // Resources
-    vaos:          HashMap<MeshId, WebGlVertexArrayObject>,
-    materials:     HashMap<u64, MaterialResource>,
-    webgl_buffers: HashMap<u64, WebGlBuffer>,
+    vaos:           HashMap<MeshId, WebGlVertexArrayObject>,
+    materials:      HashMap<u64, MaterialResource>,
+    webgl_buffers:  HashMap<u64, WebGlBuffer>,
+    webgl_textures: HashMap<u64, WebGlTexture>,
 }
 
 impl Renderer {
@@ -36,9 +36,10 @@ impl Renderer {
         Renderer {
             gl,
             canvas,
+            vaos: HashMap::new(),
             materials: HashMap::new(),
             webgl_buffers: HashMap::new(),
-            vaos: HashMap::new(),
+            webgl_textures: HashMap::new(),
         }
     }
 
@@ -58,10 +59,56 @@ impl Renderer {
         let material_resource = self.materials.get(&mesh.material.id).unwrap();
 
         material_resource.use_program();
-        
+
         // Set uniforms
+        let mut current_texture_unit = 0;
         for (name, uniform) in &mesh.material.uniforms {
-            material_resource.set_uniform(name, uniform);
+            material_resource.set_uniform(&name, &uniform, current_texture_unit);
+            current_texture_unit = current_texture_unit + 1;
+
+            if let Uniform::Texture(texture) = uniform {
+                if !self.webgl_textures.contains_key(&texture.id) {
+                    let webgl_texture = self.gl.create_texture().unwrap();
+                    self.webgl_textures.insert(texture.id, webgl_texture);
+
+                    // Setup texture
+                    let webgl_texture = self.webgl_textures.get(&texture.id).unwrap();
+                    self.gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(webgl_texture));
+
+                    match &texture.texture_data {
+                        TextureData::HtmlImageElement(source) => {
+                            self.gl.tex_image_2d_with_u32_and_u32_and_html_image_element(
+                                WebGl2RenderingContext::TEXTURE_2D,
+                                0,
+                                texture.internal_format as i32,
+                                texture.format as u32,
+                                texture.data_type as u32,
+                                source
+                            ).unwrap();
+                        },
+                        TextureData::ImagePixelData(data) => {
+                            self.gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+                                WebGl2RenderingContext::TEXTURE_2D,
+                                0,
+                                texture.internal_format as i32,
+                                data.width as i32,
+                                data.height as i32,
+                                0,
+                                texture.format as u32,
+                                texture.data_type as u32,
+                                Some(&data.bytes)
+                            ).unwrap();
+                        }
+                    }
+               
+
+                    self.gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, texture.minification_filter as i32);
+                    self.gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, texture.magnification_filter as i32);
+                }
+
+                let webgl_texture = self.webgl_textures.get(&texture.id).unwrap();
+                self.gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(webgl_texture));
+            }
         }
 
         if !self.vaos.contains_key(&mesh.id) {
@@ -151,7 +198,7 @@ impl Renderer {
                 vertex_buffer.needs_update = false;
             }
         }
-        
+
         for interleaved_vertex_buffer in &mut geometry.interleaved_vertex_buffers {
             if !self.webgl_buffers.contains_key(&interleaved_vertex_buffer.id) {
                 let webgl_buffer = self.gl.create_buffer().unwrap();
