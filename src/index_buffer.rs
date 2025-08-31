@@ -1,6 +1,6 @@
-use web_sys::{WebGl2RenderingContext, WebGlBuffer, js_sys};
+use web_sys::{WebGl2RenderingContext, WebGlBuffer};
 
-use crate::utils::generate_id;
+use crate::utils::{generate_id, to_bytes};
 
 pub enum IndexData {
     UnsignedByte(Vec<u8>),
@@ -22,6 +22,14 @@ impl IndexData {
             IndexData::UnsignedByte(_) => WebGl2RenderingContext::UNSIGNED_BYTE,
             IndexData::UnsignedShort(_) => WebGl2RenderingContext::UNSIGNED_SHORT,
             IndexData::UnsignedInt(_) => WebGl2RenderingContext::UNSIGNED_INT,
+        }
+    }
+
+    pub fn bytes(&self) -> &[u8] {
+        match &self {
+            IndexData::UnsignedByte(data) => to_bytes(data),
+            IndexData::UnsignedShort(data) => to_bytes(data),
+            IndexData::UnsignedInt(data) => to_bytes(data),
         }
     }
 
@@ -90,32 +98,11 @@ impl IndexBuffer {
     pub fn create_webgl_buffer(&self, gl: &WebGl2RenderingContext) -> WebGlBuffer {
         let buffer = gl.create_buffer().unwrap();
         gl.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&buffer));
-
-        unsafe {
-            match &self.data {
-                IndexData::UnsignedByte(data) => {
-                    gl.buffer_data_with_array_buffer_view(
-                        WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-                        &js_sys::Uint8Array::view(&data),
-                        WebGl2RenderingContext::STATIC_DRAW,
-                    );
-                }
-                IndexData::UnsignedShort(data) => {
-                    gl.buffer_data_with_array_buffer_view(
-                        WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-                        &js_sys::Uint16Array::view(&data),
-                        WebGl2RenderingContext::STATIC_DRAW,
-                    );
-                }
-                IndexData::UnsignedInt(data) => {
-                    gl.buffer_data_with_array_buffer_view(
-                        WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-                        &js_sys::Uint32Array::view(&data),
-                        WebGl2RenderingContext::STATIC_DRAW,
-                    );
-                }
-            };
-        }
+        gl.buffer_data_with_u8_array(
+            WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
+            self.data.bytes(),
+            WebGl2RenderingContext::STATIC_DRAW,
+        );
 
         buffer
     }
