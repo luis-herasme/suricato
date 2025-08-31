@@ -100,6 +100,7 @@ impl MaterialResource {
             Uniform::Vec4(v) => self.gl.uniform4fv_with_f32_array(Some(location), v),
             Uniform::Mat4(v) => self.gl.uniform_matrix4fv_with_f32_array(Some(location), false, v),
             Uniform::Texture(_) => {
+                self.gl.uniform1i(Some(location), current_texture_unit as i32);
                 self.gl.active_texture(WebGl2RenderingContext::TEXTURE0 + current_texture_unit);
             }
         }
