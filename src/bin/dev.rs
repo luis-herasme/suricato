@@ -39,10 +39,11 @@ in vec2 v_texture_coordinate;
 
 out vec4 fragment_color;
 
-uniform sampler2D simple_sampler;
+uniform sampler2D simple_sampler1;
+uniform sampler2D simple_sampler2;
 
 void main() {
-    fragment_color = 2.0 * texture(simple_sampler, v_texture_coordinate);
+    fragment_color = 0.8 *texture(simple_sampler1, v_texture_coordinate) + 0.2 * texture(simple_sampler2, v_texture_coordinate);
 }
 "#;
 
@@ -54,7 +55,7 @@ void main() {
 
     let image = fetch_image("./cobble_stone.png").await.unwrap();
     let texture = Texture::from(image);
-    material.set_uniform("simple_sampler", Uniform::Texture(texture));
+    material.set_uniform("simple_sampler1", Uniform::Texture(texture.clone()));
 
     let geometry = Geometry::quad_instanced(size * size);
     let mut mesh = Mesh::new(geometry, material);
@@ -70,6 +71,22 @@ void main() {
             transforms.push(transform);
         }
     }
+
+    // START CONFIG
+    let mut bob_trasnforms = transforms.clone();
+    let mut bob_material = Material::new(vertex_shader_source, fragment_shader_source);
+
+    let bob_image = fetch_image("./bob.png").await.unwrap();
+    let bob_texture = Texture::from(bob_image);
+
+    bob_material.set_uniform("simple_sampler1", Uniform::Texture(bob_texture.clone()));
+    bob_material.set_uniform("simple_sampler2", Uniform::Texture(texture));
+
+    let bob_geometry = Geometry::quad_instanced(size * size);
+    let mut bob_mesh = Mesh::new(bob_geometry, bob_material);
+    // END CONFIG
+
+    mesh.material.set_uniform("simple_sampler2", Uniform::Texture(bob_texture));
 
     let frames_rendered = Rc::new(Mutex::new(1));
     let frames_rendered_cloned = Rc::clone(&frames_rendered);
@@ -87,7 +104,17 @@ void main() {
             transform_buffer.update_vertex(vertex_index, &transform.to_array());
         }
 
+        let bob_transform_buffer = bob_mesh.geometry.get_vertex_buffer("transform").unwrap();
+        for (vertex_index, transform) in bob_trasnforms.iter_mut().enumerate() {
+            transform.scale.x = 0.2;
+            transform.scale.y = 0.2;
+            transform.rotation += vertex_index as f32 * 0.001;
+            bob_transform_buffer.update_vertex(vertex_index, &transform.to_array());
+        }
+        // bob_transform_buffer.update(0, &bob_trasnforms);
+
         renderer.render(&mut mesh);
+        renderer.render(&mut bob_mesh);
     }) as Box<dyn FnMut()>);
 
     web_sys::window()
