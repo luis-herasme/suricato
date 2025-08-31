@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use web_sys::{js_sys, HtmlCanvasElement, WebGl2RenderingContext, WebGlTexture, WebGlVertexArrayObject};
+use web_sys::{HtmlCanvasElement, WebGl2RenderingContext, WebGlTexture, WebGlVertexArrayObject};
 use web_sys::{WebGlBuffer, wasm_bindgen::JsCast};
 
 use crate::{
@@ -179,44 +179,24 @@ impl Renderer {
     fn geometry_buffers_create(&mut self, geometry: &mut Geometry) {
         for vertex_buffer in &mut geometry.vertex_buffers {
             if !self.webgl_buffers.contains_key(&vertex_buffer.id) {
-                let webgl_buffer = self.gl.create_buffer().unwrap();
+                let webgl_buffer = self.create_webgl_buffer(&vertex_buffer.data);
                 self.webgl_buffers.insert(vertex_buffer.id, webgl_buffer);
             }
 
             if vertex_buffer.needs_update {
-                let webgl_buffer = self.webgl_buffers.get(&vertex_buffer.id).unwrap();
-                self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
-
-                unsafe {
-                    self.gl.buffer_data_with_array_buffer_view(
-                        WebGl2RenderingContext::ARRAY_BUFFER,
-                        &js_sys::Uint8Array::view(&vertex_buffer.data),
-                        WebGl2RenderingContext::STATIC_DRAW,
-                    );
-                }
-
+                self.update_webgl_buffer(&vertex_buffer.id, &vertex_buffer.data);
                 vertex_buffer.needs_update = false;
             }
         }
 
         for interleaved_vertex_buffer in &mut geometry.interleaved_vertex_buffers {
             if !self.webgl_buffers.contains_key(&interleaved_vertex_buffer.id) {
-                let webgl_buffer = self.gl.create_buffer().unwrap();
+                let webgl_buffer = self.create_webgl_buffer(&interleaved_vertex_buffer.data);
                 self.webgl_buffers.insert(interleaved_vertex_buffer.id, webgl_buffer);
             }
 
             if interleaved_vertex_buffer.needs_update {
-                let webgl_buffer = self.webgl_buffers.get(&interleaved_vertex_buffer.id).unwrap();
-                self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
-
-                unsafe {
-                    self.gl.buffer_data_with_array_buffer_view(
-                        WebGl2RenderingContext::ARRAY_BUFFER,
-                        &js_sys::Uint8Array::view(&interleaved_vertex_buffer.data),
-                        WebGl2RenderingContext::STATIC_DRAW,
-                    );
-                }
-
+                self.update_webgl_buffer(&interleaved_vertex_buffer.id, &interleaved_vertex_buffer.data);
                 interleaved_vertex_buffer.needs_update = false;
             }
         }
@@ -227,5 +207,18 @@ impl Renderer {
                 self.webgl_buffers.insert(indices.id, buffer);
             }
         }
+    }
+
+    fn create_webgl_buffer(&self, data: &[u8]) -> WebGlBuffer {
+        let webgl_buffer = self.gl.create_buffer().unwrap();
+        self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
+        self.gl.buffer_data_with_u8_array(WebGl2RenderingContext::ARRAY_BUFFER, data, WebGl2RenderingContext::STATIC_DRAW);
+        webgl_buffer
+    }
+
+    fn update_webgl_buffer(&self, webgl_buffer_id: &u64, data: &[u8]) {
+        let webgl_buffer = self.webgl_buffers.get(webgl_buffer_id).unwrap();
+        self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
+        self.gl.buffer_sub_data_with_i32_and_u8_array(WebGl2RenderingContext::ARRAY_BUFFER, 0, data);
     }
 }

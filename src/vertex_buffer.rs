@@ -378,7 +378,7 @@ impl VertexBuffer {
 
         VertexBuffer {
             id:           generate_id(),
-            needs_update: true,
+            needs_update: false,
             data:         vertex.data.to_bytes().to_vec(),
             layout:       layout,
         }
@@ -425,7 +425,7 @@ impl InterleavedVertexBuffer {
 
         InterleavedVertexBuffer {
             id: generate_id(),
-            needs_update: true,
+            needs_update: false,
             data,
             layouts,
         }
