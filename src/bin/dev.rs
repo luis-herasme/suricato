@@ -1,6 +1,12 @@
 use std::{rc::Rc, sync::Mutex};
 
-use suricato::{geometry::Geometry, material::Material, renderer::Renderer, transform::Transform2D};
+use suricato::{
+    geometry::Geometry,
+    material::Material,
+    mesh::{Mesh, RenderPrimitive},
+    renderer::Renderer,
+    transform::Transform2D,
+};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use web_sys::console;
 
@@ -17,6 +23,7 @@ out vec4 v_color;
 void main() {
     v_color = vec4(color, 1.0);
     gl_Position = vec4(transform * vec3(position, 1.0), 1.0);
+    gl_PointSize = 10.0;
 }
 "#;
     let fragment_shader_source = r#"#version 300 es
@@ -32,16 +39,19 @@ void main() {
 
     let mut renderer = Renderer::new();
 
-    let size = 1024;
+    let size = 10;
 
-    let mut material = Material::new(vertex_shader_source, fragment_shader_source);
-    let mut geometry = Geometry::quad_instanced(size * size);
+    let material = Material::new(vertex_shader_source, fragment_shader_source);
+    let geometry = Geometry::quad_instanced(size * size);
+    let mut mesh = Mesh::new(geometry, material);
+    mesh.render_primitive = RenderPrimitive::Points;
+
     let mut transforms = Vec::new();
 
     for x in 0..size {
         for y in 0..size {
             let mut transform = Transform2D::new();
-            transform.scale *= 0.005;
+            transform.scale *= 0.05;
             transform.translation.x = 1.85 * (x as f32 - size as f32 / 2.0) / size as f32;
             transform.translation.y = 1.85 * (y as f32 - size as f32 / 2.0) / size as f32;
             transforms.push(transform);
@@ -57,14 +67,14 @@ void main() {
 
         renderer.clear();
 
-        let transform_buffer = geometry.get_vertex_buffer("transform").unwrap();
+        let transform_buffer = mesh.geometry.get_vertex_buffer("transform").unwrap();
 
         for (vertex_index, transform) in transforms.iter_mut().enumerate() {
             transform.rotation += vertex_index as f32 * 0.0001;
             transform_buffer.update_vertex(vertex_index, &transform.to_array());
         }
 
-        renderer.render(&mut material, &mut geometry);
+        renderer.render(&mut mesh);
     }) as Box<dyn FnMut()>);
 
     web_sys::window()
