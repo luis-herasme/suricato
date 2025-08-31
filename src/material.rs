@@ -98,7 +98,21 @@ impl MaterialResource {
             Uniform::Vec2(v) => self.gl.uniform2fv_with_f32_array(Some(location), v),
             Uniform::Vec3(v) => self.gl.uniform3fv_with_f32_array(Some(location), v),
             Uniform::Vec4(v) => self.gl.uniform4fv_with_f32_array(Some(location), v),
+
+            Uniform::Int(v) => self.gl.uniform1i(Some(location), *v),
+            Uniform::IntVec2(v) => self.gl.uniform2iv_with_i32_array(Some(location), v),
+            Uniform::IntVec3(v) => self.gl.uniform3iv_with_i32_array(Some(location), v),
+            Uniform::IntVec4(v) => self.gl.uniform4iv_with_i32_array(Some(location), v),
+
+            Uniform::UnsignedInt(v) => self.gl.uniform1ui(Some(location), *v),
+            Uniform::UnsignedIntVec2(v) => self.gl.uniform2uiv_with_u32_array(Some(location), v),
+            Uniform::UnsignedIntVec3(v) => self.gl.uniform2uiv_with_u32_array(Some(location), v),
+            Uniform::UnsignedIntVec4(v) => self.gl.uniform2uiv_with_u32_array(Some(location), v),
+
+            Uniform::Mat2(v) => self.gl.uniform_matrix2fv_with_f32_array(Some(location), false, v),
+            Uniform::Mat3(v) => self.gl.uniform_matrix3fv_with_f32_array(Some(location), false, v),
             Uniform::Mat4(v) => self.gl.uniform_matrix4fv_with_f32_array(Some(location), false, v),
+
             Uniform::Texture(_) => {
                 self.gl.uniform1i(Some(location), current_texture_unit as i32);
                 self.gl.active_texture(WebGl2RenderingContext::TEXTURE0 + current_texture_unit);
