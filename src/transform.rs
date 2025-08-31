@@ -1,5 +1,6 @@
 use glam::{Mat3, Mat4, Quat, Vec2, Vec3};
 
+#[derive(Clone, Debug)]
 pub struct Transform3D {
     pub scale:       Vec3,
     pub rotation:    Quat,
@@ -24,6 +25,7 @@ impl Transform3D {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Transform2D {
     pub scale:       Vec2,
     pub rotation:    f32, // radians
