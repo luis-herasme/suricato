@@ -4,10 +4,10 @@ use web_sys::{HtmlCanvasElement, WebGl2RenderingContext, WebGlTexture, WebGlVert
 use web_sys::{WebGlBuffer, wasm_bindgen::JsCast};
 
 use crate::{
-    geometry::Geometry, material::{Material, MaterialResource}, mesh::{Mesh, MeshId}, texture::TextureData, uniforms::Uniform
+    geometry::Geometry, material::{Material, MaterialResource}, mesh::{Mesh, MeshId}, texture::TextureData, uniforms::{Uniform, UniformBlockManager}
 };
 
-pub struct Renderer {
+pub struct App {
     pub gl:     WebGl2RenderingContext,
     pub canvas: HtmlCanvasElement,
 
@@ -16,10 +16,11 @@ pub struct Renderer {
     materials:      HashMap<u64, MaterialResource>,
     webgl_buffers:  HashMap<u64, WebGlBuffer>,
     webgl_textures: HashMap<u64, WebGlTexture>,
+    pub uniform_blocks: UniformBlockManager
 }
 
-impl Renderer {
-    pub fn new() -> Renderer {
+impl App {
+    pub fn new() -> App {
         let document = web_sys::window().unwrap().document().unwrap();
         let canvas = document.create_element("canvas").unwrap().dyn_into::<HtmlCanvasElement>().unwrap();
         document.body().unwrap().append_child(&canvas).unwrap();
@@ -33,7 +34,8 @@ impl Renderer {
             .dyn_into::<WebGl2RenderingContext>()
             .unwrap();
 
-        Renderer {
+        App {
+            uniform_blocks: UniformBlockManager::new(&gl),
             gl,
             canvas,
             vaos: HashMap::new(),
@@ -53,9 +55,10 @@ impl Renderer {
         self.geometry_buffers_create(&mut mesh.geometry);
 
         if !self.materials.contains_key(&mesh.material.id) {
-            self.create_material_resource(&mut mesh.material);
+            self.compile_material(&mut mesh.material);
         }
 
+        self.uniform_blocks.update();
         let material_resource = self.materials.get(&mesh.material.id).unwrap();
 
         material_resource.use_program();
@@ -171,8 +174,9 @@ impl Renderer {
 
     }
 
-    fn create_material_resource(&mut self, material: &Material) {
+    pub fn compile_material(&mut self, material: &Material) {
         let resource = MaterialResource::new(&self.gl, material).unwrap();
+        self.uniform_blocks.create_uniform_blocks_from_program(&resource.program);
         self.materials.insert(material.id, resource);
     }
 

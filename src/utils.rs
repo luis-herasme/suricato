@@ -1,6 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
+use web_sys::js_sys::{Array, Uint32Array};
 use web_sys::{HtmlImageElement, Response};
 
 static ID_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -17,7 +18,6 @@ pub fn to_bytes<T>(slice: &[T]) -> &[u8] {
     }
 }
 
-#[wasm_bindgen]
 pub async fn fetch_image(url: &str) -> Result<HtmlImageElement, JsValue> {
     let window = web_sys::window().unwrap();
     let response_value = JsFuture::from(window.fetch_with_str(&url)).await?;
@@ -30,4 +30,16 @@ pub async fn fetch_image(url: &str) -> Result<HtmlImageElement, JsValue> {
     image.set_src(&url);
 
     Ok(image)
+}
+
+pub fn js_value_to_vec_u32(array: JsValue) -> Vec<u32> {
+    let array = Uint32Array::new(&array);
+    let mut output = vec![0; array.length() as usize];
+    array.copy_to(&mut output[..]);
+    output
+}
+
+pub fn js_array_to_vec_u32(array: JsValue) -> Vec<u32> {
+    let array: Array = array.dyn_into().unwrap();
+    array.iter().map(|v| v.as_f64().unwrap() as u32).collect()
 }

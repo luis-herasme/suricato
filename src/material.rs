@@ -27,7 +27,7 @@ impl Material {
 
 pub struct MaterialResource {
     gl:                  WebGl2RenderingContext,
-    program:             WebGlProgram,
+    pub program:         WebGlProgram,
     uniform_locations:   HashMap<String, WebGlUniformLocation>,
     attribute_locations: HashMap<String, u32>,
 }
@@ -143,6 +143,10 @@ impl MaterialResource {
 
     /// ATTRIBUTES
     pub fn set_attribute_buffer(&self, vertex_layout: &VertexLayout) {
+        if self.attribute_locations.get(&vertex_layout.name).is_none() {
+            return;
+        }
+
         let location = self.attribute_locations.get(&vertex_layout.name).unwrap();
 
         if vertex_layout.number_of_columns == 1 {
