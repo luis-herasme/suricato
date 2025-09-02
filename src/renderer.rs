@@ -4,7 +4,7 @@ use web_sys::{HtmlCanvasElement, WebGl2RenderingContext, WebGlTexture, WebGlVert
 use web_sys::{WebGlBuffer, wasm_bindgen::JsCast};
 
 use crate::{
-    geometry::Geometry, material::{Material, MaterialResource}, mesh::{Mesh, MeshId}, texture::TextureData, uniforms::{Uniform, UniformBlockManager}
+    geometry::Geometry, material::{Material, MaterialResource}, mesh::{Mesh, MeshId}, texture::TextureData, ubo::UniformBufferObject, uniforms::Uniform
 };
 
 pub struct App {
@@ -12,11 +12,11 @@ pub struct App {
     pub canvas: HtmlCanvasElement,
 
     // Resources
-    vaos:           HashMap<MeshId, WebGlVertexArrayObject>,
-    materials:      HashMap<u64, MaterialResource>,
-    webgl_buffers:  HashMap<u64, WebGlBuffer>,
-    webgl_textures: HashMap<u64, WebGlTexture>,
-    pub uniform_blocks: UniformBlockManager
+    vaos:                   HashMap<MeshId, WebGlVertexArrayObject>,
+    materials:              HashMap<u64, MaterialResource>,
+    webgl_buffers:          HashMap<u64, WebGlBuffer>,
+    webgl_textures:         HashMap<u64, WebGlTexture>,
+    uniform_buffer_objects: Vec<UniformBufferObject>,
 }
 
 impl App {
@@ -35,13 +35,13 @@ impl App {
             .unwrap();
 
         App {
-            uniform_blocks: UniformBlockManager::new(&gl),
             gl,
             canvas,
             vaos: HashMap::new(),
             materials: HashMap::new(),
             webgl_buffers: HashMap::new(),
             webgl_textures: HashMap::new(),
+            uniform_buffer_objects: Vec::new()
         }
     }
 
@@ -58,10 +58,17 @@ impl App {
             self.compile_material(&mut mesh.material);
         }
 
-        self.uniform_blocks.update();
         let material_resource = self.materials.get(&mesh.material.id).unwrap();
 
         material_resource.use_program();
+
+        for uniform_buffer_object in &self.uniform_buffer_objects {
+            uniform_buffer_object.update(&self.gl);
+        }
+
+        for (name, ubo_binding_point) in mesh.material.commands.drain(..) {
+            material_resource.set_uniform_block(&name, ubo_binding_point);
+        }
 
         // Set uniforms
         let mut current_texture_unit = 0;
@@ -176,7 +183,6 @@ impl App {
 
     pub fn compile_material(&mut self, material: &Material) {
         let resource = MaterialResource::new(&self.gl, material).unwrap();
-        self.uniform_blocks.create_uniform_blocks_from_program(&resource.program);
         self.materials.insert(material.id, resource);
     }
 
@@ -224,5 +230,17 @@ impl App {
         let webgl_buffer = self.webgl_buffers.get(webgl_buffer_id).unwrap();
         self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
         self.gl.buffer_sub_data_with_i32_and_u8_array(WebGl2RenderingContext::ARRAY_BUFFER, 0, data);
+    }
+
+    /// UBO
+    pub fn create_ubo(&mut self) -> u32 {
+        let ubo_binding_point = self.uniform_buffer_objects.len() as u32;
+        let ubo = UniformBufferObject::new(&self.gl, ubo_binding_point);
+        self.uniform_buffer_objects.push(ubo);
+        ubo_binding_point
+    }
+
+    pub fn set_ubo(&mut self, ubo_binding_point: u32, value: Vec<u8>) {
+        self.uniform_buffer_objects[ubo_binding_point as usize].set_buffer(value);
     }
 }

@@ -1,11 +1,12 @@
 use std::collections::HashMap;
-use web_sys::{WebGl2RenderingContext, WebGlProgram, WebGlShader, WebGlUniformLocation};
+use web_sys::{WebGl2RenderingContext as GL, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
 use crate::{uniforms::Uniform, utils::generate_id, vertex_buffer::VertexLayout};
 
 pub struct Material {
     pub id:                 u64,
     pub uniforms:           HashMap<String, Uniform>,
+    pub commands:           Vec<(String, u32)>,
     vertex_shader_source:   String,
     fragment_shader_source: String,
 }
@@ -17,47 +18,51 @@ impl Material {
             vertex_shader_source:   String::from(vertex_shader_source),
             fragment_shader_source: String::from(fragment_shader_source),
             uniforms:               HashMap::new(),
+            commands:               Vec::new(),
         }
     }
 
     pub fn set_uniform(&mut self, uniform_name: &str, uniform: Uniform) {
         self.uniforms.insert(String::from(uniform_name), uniform);
     }
+
+    pub fn set_uniform_block(&mut self, name: &str, ubo_binding_point: u32) {
+        self.commands.push((name.to_string(), ubo_binding_point));
+    }
 }
 
 pub struct MaterialResource {
-    gl:                  WebGl2RenderingContext,
-    pub program:         WebGlProgram,
-    uniform_locations:   HashMap<String, WebGlUniformLocation>,
-    attribute_locations: HashMap<String, u32>,
+    gl:                      GL,
+    program:                 WebGlProgram,
+    uniform_locations:       HashMap<String, WebGlUniformLocation>,
+    attribute_locations:     HashMap<String, u32>,
+    uniform_block_locations: HashMap<String, u32>,
 }
 
 impl MaterialResource {
-    pub fn new(gl: &WebGl2RenderingContext, material: &Material) -> Result<MaterialResource, String> {
+    pub fn new(gl: &GL, material: &Material) -> Result<MaterialResource, String> {
         let webgl_program = gl.create_program().ok_or_else(|| String::from("Could not create program"))?;
 
-        let vertex_shader = MaterialResource::compile_shader(&gl, &material.vertex_shader_source, WebGl2RenderingContext::VERTEX_SHADER)?;
-        let fragment_shader =
-            MaterialResource::compile_shader(&gl, &material.fragment_shader_source, WebGl2RenderingContext::FRAGMENT_SHADER)?;
+        let vertex_shader = MaterialResource::compile_shader(&gl, &material.vertex_shader_source, GL::VERTEX_SHADER)?;
+        let fragment_shader = MaterialResource::compile_shader(&gl, &material.fragment_shader_source, GL::FRAGMENT_SHADER)?;
 
         gl.attach_shader(&webgl_program, &vertex_shader);
         gl.attach_shader(&webgl_program, &fragment_shader);
         gl.link_program(&webgl_program);
 
-        let program_link_status_is_ok = gl
-            .get_program_parameter(&webgl_program, WebGl2RenderingContext::LINK_STATUS)
-            .as_bool()
-            .unwrap_or(false);
+        let program_link_status_is_ok = gl.get_program_parameter(&webgl_program, GL::LINK_STATUS).as_bool().unwrap_or(false);
 
         if program_link_status_is_ok {
             let uniform_locations = MaterialResource::get_uniform_locations(&gl, &webgl_program);
             let attribute_locations = MaterialResource::get_attribute_locations(&gl, &webgl_program);
+            let uniform_block_locations = MaterialResource::get_uniform_block_locations(gl, &webgl_program);
 
             Ok(MaterialResource {
                 gl: gl.clone(),
                 program: webgl_program,
                 uniform_locations,
                 attribute_locations,
+                uniform_block_locations,
             })
         } else {
             Err(gl
@@ -66,16 +71,13 @@ impl MaterialResource {
         }
     }
 
-    fn compile_shader(gl: &WebGl2RenderingContext, shader_source: &str, shader_type: u32) -> Result<WebGlShader, String> {
+    fn compile_shader(gl: &GL, shader_source: &str, shader_type: u32) -> Result<WebGlShader, String> {
         let shader = gl
             .create_shader(shader_type)
             .ok_or_else(|| String::from("Unable to create shader"))?;
         gl.shader_source(&shader, &shader_source);
         gl.compile_shader(&shader);
-        let shader_status_is_ok = gl
-            .get_shader_parameter(&shader, WebGl2RenderingContext::COMPILE_STATUS)
-            .as_bool()
-            .unwrap_or(false);
+        let shader_status_is_ok = gl.get_shader_parameter(&shader, GL::COMPILE_STATUS).as_bool().unwrap_or(false);
         if shader_status_is_ok {
             Ok(shader)
         } else {
@@ -115,16 +117,16 @@ impl MaterialResource {
 
             Uniform::Texture(_) => {
                 self.gl.uniform1i(Some(location), current_texture_unit as i32);
-                self.gl.active_texture(WebGl2RenderingContext::TEXTURE0 + current_texture_unit);
+                self.gl.active_texture(GL::TEXTURE0 + current_texture_unit);
             }
         }
     }
 
-    fn get_uniform_locations(gl: &WebGl2RenderingContext, program: &WebGlProgram) -> HashMap<String, WebGlUniformLocation> {
+    fn get_uniform_locations(gl: &GL, program: &WebGlProgram) -> HashMap<String, WebGlUniformLocation> {
         let mut uniform_locations = HashMap::new();
 
         let number_of_uniforms = gl
-            .get_program_parameter(&program, WebGl2RenderingContext::ACTIVE_UNIFORMS)
+            .get_program_parameter(&program, GL::ACTIVE_UNIFORMS)
             .as_f64()
             .expect("Unable to get the number of uniforms");
 
@@ -190,11 +192,11 @@ impl MaterialResource {
         }
     }
 
-    fn get_attribute_locations(gl: &WebGl2RenderingContext, program: &WebGlProgram) -> HashMap<String, u32> {
+    fn get_attribute_locations(gl: &GL, program: &WebGlProgram) -> HashMap<String, u32> {
         let mut attribute_locations = HashMap::new();
 
         let number_of_attributes = gl
-            .get_program_parameter(&program, WebGl2RenderingContext::ACTIVE_ATTRIBUTES)
+            .get_program_parameter(&program, GL::ACTIVE_ATTRIBUTES)
             .as_f64()
             .expect("Unable to get the number of attributes");
 
@@ -207,5 +209,26 @@ impl MaterialResource {
         }
 
         attribute_locations
+    }
+
+    /// UNIFORM BLOCKS
+    pub fn get_uniform_block_locations(gl: &GL, program: &WebGlProgram) -> HashMap<String, u32> {
+        let mut uniform_block_locations = HashMap::new();
+        let number_of_uniform_blocks = gl.get_program_parameter(program, GL::ACTIVE_UNIFORM_BLOCKS).as_f64().unwrap() as u32;
+
+        for uniform_block_location in 0..number_of_uniform_blocks {
+            let name = gl.get_active_uniform_block_name(program, uniform_block_location).unwrap();
+            uniform_block_locations.insert(name, uniform_block_location);
+        }
+
+        uniform_block_locations
+    }
+
+    pub fn set_uniform_block(&self, name: &str, ubo_binding_point: u32) {
+        let Some(block_location) = self.uniform_block_locations.get(name) else {
+            return;
+        };
+
+        self.gl.uniform_block_binding(&self.program, *block_location, ubo_binding_point);
     }
 }

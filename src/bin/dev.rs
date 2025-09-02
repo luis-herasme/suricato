@@ -1,4 +1,4 @@
-use suricato::{geometry::Geometry, material::Material, mesh::Mesh, renderer::App, uniforms::Uniform};
+use suricato::{geometry::Geometry, material::Material, mesh::Mesh, renderer::App, uniforms::Uniform, utils::to_bytes};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use wasm_bindgen_futures::spawn_local;
 
@@ -11,10 +11,10 @@ async fn main_async() {
     console_error_panic_hook::set_once();
 
     let vertex_shader_source = r#"#version 300 es
-uniform Colors {
-    vec3 color_1;
-    vec3 color_2;
-    vec3 color_3;
+layout(std140) uniform Colors {
+    vec4 color_1;
+    vec4 color_2;
+    vec4 color_3;
 };
 
 uniform vec2 translation;
@@ -24,34 +24,11 @@ out vec4 v_color;
 
 void main() {
     if (color_selector == 1u) {
-        v_color = vec4(color_1, 1.0);
+        v_color = color_1;
     } else if (color_selector == 2u) {
-        v_color = vec4(color_2, 1.0);
+        v_color = color_2;
     } else {
-        v_color = vec4(color_3, 1.0);
-    }
-    gl_Position = vec4(position + translation, 0.0, 1.0);
-}
-"#;
-    let vertex_shader_source_2 = r#"#version 300 es
-uniform Colors {
-    vec3 color_1;
-    vec3 color_2;
-    vec3 color_3;
-};
-
-uniform vec2 translation;
-uniform uint color_selector;
-in vec2 position;
-out vec4 v_color;
-
-void main() {
-    if (color_selector == 1u) {
-        v_color = vec4(0.25 * color_1, 1.0);
-    } else if (color_selector == 2u) {
-        v_color = vec4(0.25 * color_2, 1.0);
-    } else {
-        v_color = vec4(0.25 * color_3, 1.0);
+        v_color = color_3;
     }
     gl_Position = vec4(position + translation, 0.0, 1.0);
 }
@@ -68,25 +45,21 @@ void main() {
 "#;
 
     let mut app = App::new();
-    let material = Material::new(vertex_shader_source, fragment_shader_source);
+    let mut material = Material::new(vertex_shader_source, fragment_shader_source);
     let geometry = Geometry::quad();
+
+    let ubo_binding_point = app.create_ubo();
+    material.set_uniform_block("Colors", ubo_binding_point);
+
+    let colors: Vec<f32> = vec![
+        1.0, 0.0, 0.0, 1.0, // Color 2
+        0.0, 1.0, 0.0, 1.0, // Color 3
+        0.0, 0.0, 1.0, 1.0, // Color 1
+        0.0, 0.0, 0.0, 0.0, // Padding
+    ];
+
+    app.set_ubo(ubo_binding_point, to_bytes(&colors).to_vec());
     let mut mesh = Mesh::new(geometry, material);
-
-    app.compile_material(&mesh.material);
-    let color_1: [f32; 3] = [1.0, 0.0, 0.0];
-    let color_2: [f32; 3] = [0.0, 1.0, 0.0];
-    let color_3: [f32; 3] = [0.0, 0.0, 1.0];
-    app.uniform_blocks.set_block_property("Colors", "color_1", &color_1);
-    app.uniform_blocks.set_block_property("Colors", "color_2", &color_2);
-    app.uniform_blocks.set_block_property("Colors", "color_3", &color_3);
-
-    app.uniform_blocks.set_block("Colors", 0, &color_1);
-
-    //
-    let material2 = Material::new(vertex_shader_source_2, fragment_shader_source);
-    let geometry2 = Geometry::quad();
-    let mut mesh2 = Mesh::new(geometry2, material2);
-    //
 
     let render_loop = Closure::wrap(Box::new(move || {
         app.clear();
@@ -95,9 +68,9 @@ void main() {
         mesh.material.set_uniform("color_selector", Uniform::UnsignedInt(1));
         app.render(&mut mesh);
 
-        mesh2.material.set_uniform("translation", Uniform::Vec2([0.0, 0.0]));
-        mesh2.material.set_uniform("color_selector", Uniform::UnsignedInt(2));
-        app.render(&mut mesh2);
+        mesh.material.set_uniform("translation", Uniform::Vec2([0.0, 0.0]));
+        mesh.material.set_uniform("color_selector", Uniform::UnsignedInt(2));
+        app.render(&mut mesh);
 
         mesh.material.set_uniform("translation", Uniform::Vec2([0.25, 0.25]));
         mesh.material.set_uniform("color_selector", Uniform::UnsignedInt(3));

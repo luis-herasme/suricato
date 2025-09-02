@@ -5,6 +5,7 @@ pub mod mesh;
 pub mod renderer;
 pub mod texture;
 pub mod transform;
+pub mod ubo;
 pub mod uniforms;
 pub mod utils;
 pub mod vertex_buffer;
