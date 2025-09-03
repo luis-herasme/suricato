@@ -34,6 +34,8 @@ impl App {
             .dyn_into::<WebGl2RenderingContext>()
             .unwrap();
 
+        gl.enable(WebGl2RenderingContext::DEPTH_TEST);
+
         App {
             gl,
             canvas,
@@ -47,7 +49,7 @@ impl App {
 
     pub fn clear(&self) {
         self.gl.clear_color(0.0, 0.0, 0.0, 1.0);
-        self.gl.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT);
+        self.gl.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT | WebGl2RenderingContext::DEPTH_BUFFER_BIT);
     }
 
     #[rustfmt::skip]
