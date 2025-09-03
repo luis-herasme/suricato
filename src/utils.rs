@@ -32,6 +32,15 @@ pub async fn fetch_image(url: &str) -> Result<HtmlImageElement, JsValue> {
     Ok(image)
 }
 
+pub async fn fetch_text(url: &str) -> Result<String, JsValue> {
+    let window = web_sys::window().unwrap();
+    let response_value = JsFuture::from(window.fetch_with_str(url)).await?;
+    let response: Response = response_value.dyn_into()?;
+
+    let text = JsFuture::from(response.text()?).await?;
+    Ok(text.as_string().unwrap())
+}
+
 pub fn js_value_to_vec_u32(array: JsValue) -> Vec<u32> {
     let array = Uint32Array::new(&array);
     let mut output = vec![0; array.length() as usize];
