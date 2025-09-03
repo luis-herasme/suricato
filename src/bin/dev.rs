@@ -1,4 +1,16 @@
-use suricato::{geometry::Geometry, material::Material, mesh::Mesh, renderer::App, uniforms::Uniform, utils::to_bytes};
+use glam::Quat;
+use suricato::{
+    geometry::Geometry,
+    material::Material,
+    mesh::Mesh,
+    obj_parser::parse_obj,
+    renderer::App,
+    texture::Texture,
+    transform::Transform3D,
+    uniforms::Uniform,
+    utils::{fetch_image, fetch_text, generate_id, to_bytes},
+    vertex_buffer::{InterleavedVertexBuffer, VertexComponentType, VertexLayout},
+};
 use wasm_bindgen::{JsCast, prelude::Closure};
 use wasm_bindgen_futures::spawn_local;
 
@@ -11,69 +23,95 @@ async fn main_async() {
     console_error_panic_hook::set_once();
 
     let vertex_shader_source = r#"#version 300 es
-layout(std140) uniform Colors {
-    vec4 color_1;
-    vec4 color_2;
-    vec4 color_3;
-};
-
-uniform vec2 translation;
-uniform uint color_selector;
-in vec2 position;
-out vec4 v_color;
+in vec3 position;
+in vec3 normal;
+in vec2 uv;
+uniform mat4 transform;
+out vec2 v_texture_coordinate;
 
 void main() {
-    if (color_selector == 1u) {
-        v_color = color_1;
-    } else if (color_selector == 2u) {
-        v_color = color_2;
-    } else {
-        v_color = color_3;
-    }
-    gl_Position = vec4(position + translation, 0.0, 1.0);
+    v_texture_coordinate = uv;
+    gl_Position = transform * vec4(position, 1.0);
 }
 "#;
     let fragment_shader_source = r#"#version 300 es
 precision mediump float;
 
-in vec4 v_color;
+in vec2 v_texture_coordinate;
+
 out vec4 fragment_color;
 
+uniform sampler2D simple_sampler;
+
 void main() {
-    fragment_color = v_color;
+    fragment_color = texture(simple_sampler, v_texture_coordinate);
 }
 "#;
 
     let mut app = App::new();
-    let mut material = Material::new(vertex_shader_source, fragment_shader_source);
-    let geometry = Geometry::quad();
+    let material = Material::new(vertex_shader_source, fragment_shader_source);
 
-    let ubo_binding_point = app.create_ubo();
-    material.set_uniform_block("Colors", ubo_binding_point);
+    let text = fetch_text("./luis.obj").await.unwrap();
+    let obj = parse_obj(text).unwrap();
 
-    let colors: Vec<f32> = vec![
-        1.0, 0.0, 0.0, 1.0, // Color 2
-        0.0, 1.0, 0.0, 1.0, // Color 3
-        0.0, 0.0, 1.0, 1.0, // Color 1
-        0.0, 0.0, 0.0, 0.0, // Padding
-    ];
+    let vertex_buffer = InterleavedVertexBuffer {
+        id:           generate_id(),
+        data:         to_bytes(&obj).to_vec(),
+        layouts:      vec![
+            VertexLayout {
+                name:              String::from("position"),
+                component_count:   3,
+                component_type:    VertexComponentType::Float,
+                normalize:         false,
+                stride:            32,
+                offset:            0,
+                divisor:           0,
+                number_of_columns: 1,
+            },
+            VertexLayout {
+                name:              String::from("normal"),
+                component_count:   3,
+                component_type:    VertexComponentType::Float,
+                normalize:         false,
+                stride:            32,
+                offset:            12,
+                divisor:           0,
+                number_of_columns: 1,
+            },
+            VertexLayout {
+                name:              String::from("uv"),
+                component_count:   2,
+                component_type:    VertexComponentType::Float,
+                normalize:         false,
+                stride:            32,
+                offset:            24,
+                divisor:           0,
+                number_of_columns: 1,
+            },
+        ],
+        needs_update: false,
+    };
 
-    app.set_ubo(ubo_binding_point, to_bytes(&colors).to_vec());
+    let geometry = Geometry {
+        instance_count:             None,
+        vertex_count:               obj.len() / 8,
+        indices:                    None,
+        vertex_buffers:             vec![],
+        interleaved_vertex_buffers: vec![vertex_buffer],
+    };
+
     let mut mesh = Mesh::new(geometry, material);
 
+    let texture = Texture::from(fetch_image("./chair.png").await.unwrap());
+    mesh.material.set_uniform("simple_sampler", Uniform::Texture(texture.clone()));
+
+    let mut transform = Transform3D::new();
+    transform.scale *= 0.005;
     let render_loop = Closure::wrap(Box::new(move || {
         app.clear();
-
-        mesh.material.set_uniform("translation", Uniform::Vec2([-0.25, -0.25]));
-        mesh.material.set_uniform("color_selector", Uniform::UnsignedInt(1));
-        app.render(&mut mesh);
-
-        mesh.material.set_uniform("translation", Uniform::Vec2([0.0, 0.0]));
-        mesh.material.set_uniform("color_selector", Uniform::UnsignedInt(2));
-        app.render(&mut mesh);
-
-        mesh.material.set_uniform("translation", Uniform::Vec2([0.25, 0.25]));
-        mesh.material.set_uniform("color_selector", Uniform::UnsignedInt(3));
+        transform.rotation *= Quat::from_rotation_x(0.0003);
+        transform.rotation *= Quat::from_rotation_y(0.002);
+        mesh.material.set_uniform("transform", Uniform::Mat4(transform.to_array()));
         app.render(&mut mesh);
     }) as Box<dyn FnMut()>);
 
@@ -84,6 +122,93 @@ void main() {
 
     render_loop.forget();
 }
+
+// use suricato::{geometry::Geometry, material::Material, mesh::Mesh, renderer::App, uniforms::Uniform, utils::to_bytes};
+// use wasm_bindgen::{JsCast, prelude::Closure};
+// use wasm_bindgen_futures::spawn_local;
+
+// fn main() {
+//     console_error_panic_hook::set_once();
+//     spawn_local(main_async());
+// }
+
+// async fn main_async() {
+//     console_error_panic_hook::set_once();
+
+//     let vertex_shader_source = r#"#version 300 es
+// layout(std140) uniform Colors {
+//     vec4 color_1;
+//     vec4 color_2;
+//     vec4 color_3;
+// };
+
+// uniform vec2 translation;
+// uniform uint color_selector;
+// in vec2 position;
+// out vec4 v_color;
+
+// void main() {
+//     if (color_selector == 1u) {
+//         v_color = color_1;
+//     } else if (color_selector == 2u) {
+//         v_color = color_2;
+//     } else {
+//         v_color = color_3;
+//     }
+//     gl_Position = vec4(position + translation, 0.0, 1.0);
+// }
+// "#;
+//     let fragment_shader_source = r#"#version 300 es
+// precision mediump float;
+
+// in vec4 v_color;
+// out vec4 fragment_color;
+
+// void main() {
+//     fragment_color = v_color;
+// }
+// "#;
+
+//     let mut app = App::new();
+//     let mut material = Material::new(vertex_shader_source, fragment_shader_source);
+//     let geometry = Geometry::quad();
+
+//     let ubo_binding_point = app.create_ubo();
+//     material.set_uniform_block("Colors", ubo_binding_point);
+
+//     let colors: Vec<f32> = vec![
+//         1.0, 0.0, 0.0, 1.0, // Color 2
+//         0.0, 1.0, 0.0, 1.0, // Color 3
+//         0.0, 0.0, 1.0, 1.0, // Color 1
+//         0.0, 0.0, 0.0, 0.0, // Padding
+//     ];
+
+//     app.set_ubo(ubo_binding_point, to_bytes(&colors).to_vec());
+//     let mut mesh = Mesh::new(geometry, material);
+
+//     let render_loop = Closure::wrap(Box::new(move || {
+//         app.clear();
+
+//         mesh.material.set_uniform("translation", Uniform::Vec2([-0.25, -0.25]));
+//         mesh.material.set_uniform("color_selector", Uniform::UnsignedInt(1));
+//         app.render(&mut mesh);
+
+//         mesh.material.set_uniform("translation", Uniform::Vec2([0.0, 0.0]));
+//         mesh.material.set_uniform("color_selector", Uniform::UnsignedInt(2));
+//         app.render(&mut mesh);
+
+//         mesh.material.set_uniform("translation", Uniform::Vec2([0.25, 0.25]));
+//         mesh.material.set_uniform("color_selector", Uniform::UnsignedInt(3));
+//         app.render(&mut mesh);
+//     }) as Box<dyn FnMut()>);
+
+//     web_sys::window()
+//         .unwrap()
+//         .set_interval_with_callback_and_timeout_and_arguments_0(render_loop.as_ref().unchecked_ref(), 1)
+//         .unwrap();
+
+//     render_loop.forget();
+// }
 
 // use std::{rc::Rc, sync::Mutex};
 

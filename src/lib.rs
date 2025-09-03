@@ -2,6 +2,7 @@ pub mod geometry;
 pub mod index_buffer;
 pub mod material;
 pub mod mesh;
+pub mod obj_parser;
 pub mod renderer;
 pub mod texture;
 pub mod transform;
