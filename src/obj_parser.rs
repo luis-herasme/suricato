@@ -1,105 +1,70 @@
 use core::fmt;
 
-use crate::{
-    geometry::Geometry,
-    vertex_buffer::{Data, InterleavedVertexBuffer, VertexData},
-};
-
 #[derive(Clone, Debug)]
 pub struct OBJ {
-    positions: Vec<[f32; 3]>,
-    normals:   Vec<[f32; 3]>,
-    uvs:       Vec<[f32; 2]>,
-    faces:     Vec<[u32; 3]>,
+    pub positions: Vec<[f32; 3]>,
+    pub normals:   Vec<[f32; 3]>,
+    pub uvs:       Vec<[f32; 2]>,
+    pub faces:     Vec<[u32; 3]>,
 }
 
-impl OBJ {
-    pub fn to_geometry(&self) -> Result<Geometry, OBJParseError> {
+impl TryFrom<String> for OBJ {
+    type Error = OBJParseError;
+
+    fn try_from(obj_data: String) -> Result<OBJ, OBJParseError> {
         let mut positions: Vec<[f32; 3]> = Vec::new();
         let mut normals: Vec<[f32; 3]> = Vec::new();
         let mut uvs: Vec<[f32; 2]> = Vec::new();
 
-        for face in &self.faces {
-            let position_index = face[0] as usize - 1;
-            let normal_index = face[2] as usize - 1;
-            let uv_index = face[1] as usize - 1;
+        let mut faces: Vec<[u32; 3]> = Vec::new();
 
-            let position = self.positions.get(position_index).ok_or(OBJParseError::InvalidFaceIndex)?;
-            let normal = self.normals.get(normal_index).ok_or(OBJParseError::InvalidFaceIndex)?;
-            let uv = self.uvs.get(uv_index).ok_or(OBJParseError::InvalidFaceIndex)?;
+        for line in obj_data.lines() {
+            let mut words = line.split_whitespace();
 
-            positions.push(position.clone());
-            normals.push(normal.clone());
-            uvs.push(uv.clone());
-        }
-
-        let positions = VertexData {
-            name:      String::from("position"),
-            data:      Data::Vec3(positions),
-            divisor:   0,
-            normalize: false,
-        };
-
-        let normals = VertexData {
-            name:      String::from("normal"),
-            data:      Data::Vec3(normals),
-            divisor:   0,
-            normalize: false,
-        };
-
-        let uvs = VertexData {
-            name:      String::from("uv"),
-            data:      Data::Vec2(uvs),
-            divisor:   0,
-            normalize: false,
-        };
-
-        Ok(Geometry::from(InterleavedVertexBuffer::new(vec![positions, normals, uvs])))
-    }
-}
-
-pub fn parse_obj(obj_data: String) -> Result<OBJ, OBJParseError> {
-    let mut positions: Vec<[f32; 3]> = Vec::new();
-    let mut normals: Vec<[f32; 3]> = Vec::new();
-    let mut uvs: Vec<[f32; 2]> = Vec::new();
-
-    let mut faces: Vec<[u32; 3]> = Vec::new();
-
-    for line in obj_data.lines() {
-        let mut words = line.split_whitespace();
-
-        let Some(command_string) = words.next() else {
-            continue;
-        };
-
-        let command = match Command::try_from(command_string) {
-            Ok(command) => command,
-
-            // Ignoring invalid commands
-            Err(_) => {
+            let Some(command_string) = words.next() else {
                 continue;
-            }
-        };
+            };
 
-        match command {
-            Command::Position => positions.push(parse_vector_3(words)?),
-            Command::Normal => normals.push(parse_vector_3(words)?),
-            Command::UV => uvs.push(parse_vector_2(words)?),
+            let command = match Command::try_from(command_string) {
+                Ok(command) => command,
 
-            Command::Face => {
-                for face in words {
-                    faces.push(parse_face(face)?);
+                // Ignoring invalid commands
+                Err(_) => {
+                    continue;
+                }
+            };
+
+            match command {
+                Command::Position => positions.push(parse_vector_3(words)?),
+                Command::Normal => normals.push(parse_vector_3(words)?),
+                Command::UV => uvs.push(parse_vector_2(words)?),
+
+                Command::Face => {
+                    for face_string in words {
+                        let face = parse_face(face_string)?;
+
+                        // Check that the face is valid
+                        let position_index = face[0] as usize - 1;
+                        let normal_index = face[2] as usize - 1;
+                        let uv_index = face[1] as usize - 1;
+
+                        positions.get(position_index).ok_or(OBJParseError::InvalidFaceIndex)?;
+                        normals.get(normal_index).ok_or(OBJParseError::InvalidFaceIndex)?;
+                        uvs.get(uv_index).ok_or(OBJParseError::InvalidFaceIndex)?;
+
+                        faces.push(face);
+                    }
                 }
             }
         }
-    }
 
-    Ok(OBJ {
-        positions,
-        normals,
-        uvs,
-        faces,
-    })
+        Ok(OBJ {
+            positions,
+            normals,
+            uvs,
+            faces,
+        })
+    }
 }
 
 fn parse_face(face: &str) -> Result<[u32; 3], OBJParseError> {

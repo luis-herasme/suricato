@@ -1,8 +1,11 @@
+use std::{cell::RefCell, rc::Rc};
+
 use glam::Quat;
 use suricato::{
+    geometry::Geometry,
     material::Material,
     mesh::Mesh,
-    obj_parser::parse_obj,
+    obj_parser::OBJ,
     renderer::App,
     texture::Texture,
     transform::Transform3D,
@@ -39,41 +42,92 @@ in vec2 v_texture_coordinate;
 
 out vec4 fragment_color;
 
-uniform sampler2D simple_sampler;
+uniform sampler2D chair_texture;
 
 void main() {
-    fragment_color = texture(simple_sampler, v_texture_coordinate);
+    fragment_color = texture(chair_texture, v_texture_coordinate);
 }
 "#;
 
+    let obj_data = fetch_text("./chair.obj").await.unwrap();
+    let obj = OBJ::try_from(obj_data).unwrap();
+
     let mut app = App::new();
     let material = Material::new(vertex_shader_source, fragment_shader_source);
-
-    let text = fetch_text("./luis.obj").await.unwrap();
-    let geometry = parse_obj(text).unwrap().to_geometry().unwrap();
+    let geometry = Geometry::from(obj);
 
     let mut mesh = Mesh::new(geometry, material);
 
     let texture = Texture::from(fetch_image("./chair.png").await.unwrap());
-    mesh.material.set_uniform("simple_sampler", Uniform::Texture(texture.clone()));
+    mesh.material.set_uniform("chair_texture", Uniform::Texture(texture));
 
     let mut transform = Transform3D::new();
     transform.scale *= 0.005;
-    let render_loop = Closure::wrap(Box::new(move || {
+
+    let main_loop = Rc::new(RefCell::new(None));
+    let main_loop_clone = main_loop.clone();
+
+    *main_loop_clone.borrow_mut() = Some(Closure::new(move || {
         app.clear();
         transform.rotation *= Quat::from_rotation_x(0.0003);
         transform.rotation *= Quat::from_rotation_y(0.002);
         mesh.material.set_uniform("transform", Uniform::Mat4(transform.to_array()));
         app.render(&mut mesh);
-    }) as Box<dyn FnMut()>);
+        request_animation_frame(main_loop.borrow().as_ref().unwrap());
+    }));
 
+    request_animation_frame(main_loop_clone.borrow().as_ref().unwrap());
+}
+
+fn request_animation_frame(f: &Closure<dyn FnMut()>) {
     web_sys::window()
         .unwrap()
-        .set_interval_with_callback_and_timeout_and_arguments_0(render_loop.as_ref().unchecked_ref(), 1)
+        .request_animation_frame(f.as_ref().unchecked_ref())
         .unwrap();
-
-    render_loop.forget();
 }
+
+// This function is automatically invoked after the Wasm module is instantiated.
+// fn run() -> Result<(), JsValue> {
+//     // Here we want to call `requestAnimationFrame` in a loop, but only a fixed
+//     // number of times. After it's done we want all our resources cleaned up. To
+//     // achieve this we're using an `Rc`. The `Rc` will eventually store the
+//     // closure we want to execute on each frame, but to start out it contains
+//     // `None`.
+//     //
+//     // After the `Rc` is made we'll actually create the closure, and the closure
+//     // will reference one of the `Rc` instances. The other `Rc` reference is
+//     // used to store the closure, request the first frame, and then is dropped
+//     // by this function.
+//     //
+//     // Inside the closure we've got a persistent `Rc` reference, which we use
+//     // for all future iterations of the loop
+//     let f = Rc::new(RefCell::new(None));
+//     let g = f.clone();
+
+//     let mut i = 0;
+//     *g.borrow_mut() = Some(Closure::new(move || {
+//         if i > 300 {
+//             body().set_text_content(Some("All done!"));
+
+//             // Drop our handle to this closure so that it will get cleaned
+//             // up once we return.
+//             let _ = f.borrow_mut().take();
+//             return;
+//         }
+
+//         // Set the body's text content to how many times this
+//         // requestAnimationFrame callback has fired.
+//         i += 1;
+//         let text = format!("requestAnimationFrame has been called {} times.", i);
+//         body().set_text_content(Some(&text));
+
+//         // Schedule ourself for another requestAnimationFrame callback.
+//         request_animation_frame(f.borrow().as_ref().unwrap());
+//     }));
+
+//     request_animation_frame(g.borrow().as_ref().unwrap());
+//     Ok(())
+// }
 
 // use suricato::{geometry::Geometry, material::Material, mesh::Mesh, renderer::App, uniforms::Uniform, utils::to_bytes};
 // use wasm_bindgen::{JsCast, prelude::Closure};

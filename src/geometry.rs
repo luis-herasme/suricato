@@ -1,5 +1,6 @@
 use crate::{
     index_buffer::IndexBuffer,
+    obj_parser::OBJ,
     transform::Transform2D,
     vertex_buffer::{Data, InterleavedVertexBuffer, VertexBuffer, VertexData},
 };
@@ -274,5 +275,50 @@ impl From<InterleavedVertexBuffer> for Geometry {
             vertex_buffers:             vec![],
             interleaved_vertex_buffers: vec![interleaved_vertex_buffer],
         }
+    }
+}
+
+impl From<OBJ> for Geometry {
+    fn from(obj: OBJ) -> Geometry {
+        let mut positions: Vec<[f32; 3]> = Vec::new();
+        let mut normals: Vec<[f32; 3]> = Vec::new();
+        let mut uvs: Vec<[f32; 2]> = Vec::new();
+
+        for face in &obj.faces {
+            let position_index = face[0] as usize - 1;
+            let normal_index = face[2] as usize - 1;
+            let uv_index = face[1] as usize - 1;
+
+            let position = obj.positions[position_index];
+            let normal = obj.normals[normal_index];
+            let uv = obj.uvs[uv_index];
+
+            positions.push(position.clone());
+            normals.push(normal.clone());
+            uvs.push(uv.clone());
+        }
+
+        let positions = VertexData {
+            name:      String::from("position"),
+            data:      Data::Vec3(positions),
+            divisor:   0,
+            normalize: false,
+        };
+
+        let normals = VertexData {
+            name:      String::from("normal"),
+            data:      Data::Vec3(normals),
+            divisor:   0,
+            normalize: false,
+        };
+
+        let uvs = VertexData {
+            name:      String::from("uv"),
+            data:      Data::Vec2(uvs),
+            divisor:   0,
+            normalize: false,
+        };
+
+        Geometry::from(InterleavedVertexBuffer::new(vec![positions, normals, uvs]))
     }
 }
