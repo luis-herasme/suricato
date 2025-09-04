@@ -431,6 +431,18 @@ impl InterleavedVertexBuffer {
         }
     }
 
+    pub fn vertex_count(&self) -> usize {
+        self.data.len() / self.stride()
+    }
+
+    pub fn stride(&self) -> usize {
+        for layout in &self.layouts {
+            return layout.stride as usize;
+        }
+
+        unreachable!("Vertex buffer cannot be empty");
+    }
+
     fn vertex_data_array_to_bytes(vertex_data_array: &Vec<Data>, layout_array: &Vec<VertexLayout>) -> Vec<u8> {
         let vertex_count = vertex_data_array[0].count();
         let stride = layout_array[0].stride;

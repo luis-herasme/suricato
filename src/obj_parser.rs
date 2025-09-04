@@ -1,11 +1,66 @@
 use core::fmt;
 
-pub fn parse_obj(obj_data: String) -> Result<Vec<f32>, OBJParseError> {
+use crate::vertex_buffer::{Data, InterleavedVertexBuffer, VertexData};
+
+#[derive(Clone, Debug)]
+pub struct OBJ {
+    positions: Vec<[f32; 3]>,
+    normals:   Vec<[f32; 3]>,
+    uvs:       Vec<[f32; 2]>,
+    faces:     Vec<[u32; 3]>,
+}
+
+impl OBJ {
+    pub fn to_interleaved_buffer(&self) -> Result<InterleavedVertexBuffer, OBJParseError> {
+        let mut positions: Vec<[f32; 3]> = Vec::new();
+        let mut normals: Vec<[f32; 3]> = Vec::new();
+        let mut uvs: Vec<[f32; 2]> = Vec::new();
+
+        for face in &self.faces {
+            let position_index = face[0] as usize - 1;
+            let normal_index = face[2] as usize - 1;
+            let uv_index = face[1] as usize - 1;
+
+            let position = self.positions.get(position_index).ok_or(OBJParseError::InvalidFaceIndex)?;
+            let normal = self.normals.get(normal_index).ok_or(OBJParseError::InvalidFaceIndex)?;
+            let uv = self.uvs.get(uv_index).ok_or(OBJParseError::InvalidFaceIndex)?;
+
+            positions.push(position.clone());
+            normals.push(normal.clone());
+            uvs.push(uv.clone());
+        }
+
+        let positions = VertexData {
+            name:      String::from("position"),
+            data:      Data::Vec3(positions),
+            divisor:   0,
+            normalize: false,
+        };
+
+        let normals = VertexData {
+            name:      String::from("normal"),
+            data:      Data::Vec3(normals),
+            divisor:   0,
+            normalize: false,
+        };
+
+        let uvs = VertexData {
+            name:      String::from("uv"),
+            data:      Data::Vec2(uvs),
+            divisor:   0,
+            normalize: false,
+        };
+
+        Ok(InterleavedVertexBuffer::new(vec![positions, normals, uvs]))
+    }
+}
+
+pub fn parse_obj(obj_data: String) -> Result<OBJ, OBJParseError> {
     let mut positions: Vec<[f32; 3]> = Vec::new();
     let mut normals: Vec<[f32; 3]> = Vec::new();
     let mut uvs: Vec<[f32; 2]> = Vec::new();
 
-    let mut output: Vec<f32> = Vec::new();
+    let mut faces: Vec<[u32; 3]> = Vec::new();
 
     for line in obj_data.lines() {
         let mut words = line.split_whitespace();
@@ -30,26 +85,18 @@ pub fn parse_obj(obj_data: String) -> Result<Vec<f32>, OBJParseError> {
 
             Command::Face => {
                 for face in words {
-                    let face = parse_face(face)?;
-
-                    // In .obj files, indices are 1-based instead of 0-based.
-                    let position_index = face[0] as usize - 1;
-                    let normal_index = face[2] as usize - 1;
-                    let uv_index = face[1] as usize - 1;
-
-                    let position = positions.get(position_index).ok_or(OBJParseError::InvalidFaceIndex)?;
-                    let normal = normals.get(normal_index).ok_or(OBJParseError::InvalidFaceIndex)?;
-                    let uv = uvs.get(uv_index).ok_or(OBJParseError::InvalidFaceIndex)?;
-
-                    output.extend_from_slice(position);
-                    output.extend_from_slice(normal);
-                    output.extend_from_slice(uv);
+                    faces.push(parse_face(face)?);
                 }
             }
         }
     }
 
-    Ok(output)
+    Ok(OBJ {
+        positions,
+        normals,
+        uvs,
+        faces,
+    })
 }
 
 fn parse_face(face: &str) -> Result<[u32; 3], OBJParseError> {

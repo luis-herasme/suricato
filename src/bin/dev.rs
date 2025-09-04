@@ -8,8 +8,7 @@ use suricato::{
     texture::Texture,
     transform::Transform3D,
     uniforms::Uniform,
-    utils::{fetch_image, fetch_text, generate_id, to_bytes},
-    vertex_buffer::{InterleavedVertexBuffer, VertexComponentType, VertexLayout},
+    utils::{fetch_image, fetch_text},
 };
 use wasm_bindgen::{JsCast, prelude::Closure};
 use wasm_bindgen_futures::spawn_local;
@@ -52,49 +51,11 @@ void main() {
     let material = Material::new(vertex_shader_source, fragment_shader_source);
 
     let text = fetch_text("./luis.obj").await.unwrap();
-    let obj = parse_obj(text).unwrap();
-
-    let vertex_buffer = InterleavedVertexBuffer {
-        id:           generate_id(),
-        data:         to_bytes(&obj).to_vec(),
-        layouts:      vec![
-            VertexLayout {
-                name:              String::from("position"),
-                component_count:   3,
-                component_type:    VertexComponentType::Float,
-                normalize:         false,
-                stride:            32,
-                offset:            0,
-                divisor:           0,
-                number_of_columns: 1,
-            },
-            VertexLayout {
-                name:              String::from("normal"),
-                component_count:   3,
-                component_type:    VertexComponentType::Float,
-                normalize:         false,
-                stride:            32,
-                offset:            12,
-                divisor:           0,
-                number_of_columns: 1,
-            },
-            VertexLayout {
-                name:              String::from("uv"),
-                component_count:   2,
-                component_type:    VertexComponentType::Float,
-                normalize:         false,
-                stride:            32,
-                offset:            24,
-                divisor:           0,
-                number_of_columns: 1,
-            },
-        ],
-        needs_update: false,
-    };
+    let vertex_buffer = parse_obj(text).unwrap().to_interleaved_buffer().unwrap();
 
     let geometry = Geometry {
         instance_count:             None,
-        vertex_count:               obj.len() / 8,
+        vertex_count:               vertex_buffer.vertex_count(),
         indices:                    None,
         vertex_buffers:             vec![],
         interleaved_vertex_buffers: vec![vertex_buffer],
