@@ -38,17 +38,12 @@ impl IndexData {
     }
 }
 
-pub struct IndexLayout {
-    pub kind:               u32,
-    pub count:              i32,
-    pub offset:             i32,
-    pub number_of_elements: u32,
-}
-
 pub struct IndexBuffer {
     pub id:     u64,
     pub data:   IndexData,
-    pub layout: IndexLayout,
+    pub kind:   u32,
+    pub count:  usize,
+    pub offset: i32,
 }
 
 impl From<Vec<u8>> for IndexBuffer {
@@ -73,12 +68,9 @@ impl IndexBuffer {
     pub fn new(data: IndexData) -> IndexBuffer {
         IndexBuffer {
             id: generate_id(),
-            layout: IndexLayout {
-                offset:             0,
-                kind:               data.kind(),
-                count:              data.count() as i32,
-                number_of_elements: data.count() as u32,
-            },
+            offset: 0,
+            kind: data.kind(),
+            count: data.count(),
             data,
         }
     }

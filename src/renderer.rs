@@ -160,17 +160,17 @@ impl App {
             if let Some(instance_count) = mesh.geometry.instance_count {
                 self.gl.draw_elements_instanced_with_i32(
                     mesh.render_primitive as u32,
-                    indices.layout.count,
-                    indices.layout.kind,
-                    indices.layout.offset,
+                    indices.count as i32,
+                    indices.kind,
+                    indices.offset,
                     instance_count as i32
                 );
             } else {
                 self.gl.draw_elements_with_i32(
                     mesh.render_primitive as u32,
-                    indices.layout.count,
-                    indices.layout.kind,
-                    indices.layout.offset
+                    indices.count as i32,
+                    indices.kind,
+                    indices.offset
                 );
             }
         } else {
