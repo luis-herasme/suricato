@@ -1,14 +1,18 @@
 use std::collections::HashMap;
 
-use web_sys::{HtmlCanvasElement, WebGl2RenderingContext, WebGlTexture, WebGlVertexArrayObject};
+use web_sys::{HtmlCanvasElement, WebGl2RenderingContext as GL, WebGlTexture, WebGlVertexArrayObject};
 use web_sys::{WebGlBuffer, wasm_bindgen::JsCast};
 
 use crate::{
-    geometry::Geometry, material::{Material, MaterialResource}, mesh::{Mesh, MeshId}, texture::TextureData, ubo::UniformBufferObject, uniforms::Uniform
+    geometry::Geometry,
+    material::{Material, MaterialResource},
+    mesh::{Mesh, MeshId},
+    ubo::UniformBufferObject,
+    uniforms::Uniform,
 };
 
 pub struct App {
-    pub gl:     WebGl2RenderingContext,
+    pub gl:     GL,
     pub canvas: HtmlCanvasElement,
 
     // Resources
@@ -27,14 +31,9 @@ impl App {
         canvas.set_width(800);
         canvas.set_height(800);
 
-        let gl = canvas
-            .get_context("webgl2")
-            .unwrap()
-            .unwrap()
-            .dyn_into::<WebGl2RenderingContext>()
-            .unwrap();
+        let gl = canvas.get_context("webgl2").unwrap().unwrap().dyn_into::<GL>().unwrap();
 
-        gl.enable(WebGl2RenderingContext::DEPTH_TEST);
+        gl.enable(GL::DEPTH_TEST);
 
         App {
             gl,
@@ -43,16 +42,15 @@ impl App {
             materials: HashMap::new(),
             webgl_buffers: HashMap::new(),
             webgl_textures: HashMap::new(),
-            uniform_buffer_objects: Vec::new()
+            uniform_buffer_objects: Vec::new(),
         }
     }
 
     pub fn clear(&self) {
         self.gl.clear_color(0.0, 0.0, 0.0, 1.0);
-        self.gl.clear(WebGl2RenderingContext::COLOR_BUFFER_BIT | WebGl2RenderingContext::DEPTH_BUFFER_BIT);
+        self.gl.clear(GL::COLOR_BUFFER_BIT | GL::DEPTH_BUFFER_BIT);
     }
 
-    #[rustfmt::skip]
     pub fn render(&mut self, mesh: &mut Mesh) {
         self.geometry_buffers_create(&mut mesh.geometry);
 
@@ -80,46 +78,12 @@ impl App {
 
             if let Uniform::Texture(texture) = uniform {
                 if !self.webgl_textures.contains_key(&texture.id) {
-                    let webgl_texture = self.gl.create_texture().unwrap();
+                    let webgl_texture = texture.create_webgl_texture(&self.gl);
                     self.webgl_textures.insert(texture.id, webgl_texture);
-
-                    // Setup texture
-                    let webgl_texture = self.webgl_textures.get(&texture.id).unwrap();
-                    self.gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(webgl_texture));
-
-                    match &texture.texture_data {
-                        TextureData::HtmlImageElement(source) => {
-                            self.gl.tex_image_2d_with_u32_and_u32_and_html_image_element(
-                                WebGl2RenderingContext::TEXTURE_2D,
-                                0,
-                                texture.internal_format as i32,
-                                texture.format as u32,
-                                texture.data_type as u32,
-                                source
-                            ).unwrap();
-                        },
-                        TextureData::ImagePixelData(data) => {
-                            self.gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
-                                WebGl2RenderingContext::TEXTURE_2D,
-                                0,
-                                texture.internal_format as i32,
-                                data.width as i32,
-                                data.height as i32,
-                                0,
-                                texture.format as u32,
-                                texture.data_type as u32,
-                                Some(&data.bytes)
-                            ).unwrap();
-                        }
-                    }
-               
-
-                    self.gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MIN_FILTER, texture.minification_filter as i32);
-                    self.gl.tex_parameteri(WebGl2RenderingContext::TEXTURE_2D, WebGl2RenderingContext::TEXTURE_MAG_FILTER, texture.magnification_filter as i32);
                 }
 
                 let webgl_texture = self.webgl_textures.get(&texture.id).unwrap();
-                self.gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(webgl_texture));
+                self.gl.bind_texture(GL::TEXTURE_2D, Some(webgl_texture));
             }
         }
 
@@ -130,13 +94,13 @@ impl App {
             // Set attributes
             for vertex_buffer in &mesh.geometry.vertex_buffers {
                 let buffer = self.webgl_buffers.get(&vertex_buffer.id).unwrap(); // Created at create_geometry_resource
-                self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
+                self.gl.bind_buffer(GL::ARRAY_BUFFER, Some(&buffer));
                 material_resource.set_attribute_buffer(&vertex_buffer.layout);
             }
 
             for vertex_buffer in &mesh.geometry.interleaved_vertex_buffers {
                 let buffer = self.webgl_buffers.get(&vertex_buffer.id).unwrap(); // Created at create_geometry_resource
-                self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&buffer));
+                self.gl.bind_buffer(GL::ARRAY_BUFFER, Some(&buffer));
                 for vertex_layout in &vertex_buffer.layouts {
                     material_resource.set_attribute_buffer(vertex_layout);
                 }
@@ -150,12 +114,9 @@ impl App {
         self.gl.bind_vertex_array(vao);
 
         if let Some(indices) = &mesh.geometry.indices {
-            let index_webgl_buffer = self.webgl_buffers.get(&indices.id).unwrap();  // Created at create_geometry_resource
+            let index_webgl_buffer = self.webgl_buffers.get(&indices.id).unwrap(); // Created at create_geometry_resource
 
-            self.gl.bind_buffer(
-                WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-                Some(&index_webgl_buffer)
-            );
+            self.gl.bind_buffer(GL::ELEMENT_ARRAY_BUFFER, Some(&index_webgl_buffer));
 
             if let Some(instance_count) = mesh.geometry.instance_count {
                 self.gl.draw_elements_instanced_with_i32(
@@ -163,24 +124,16 @@ impl App {
                     indices.count as i32,
                     indices.kind,
                     indices.offset,
-                    instance_count as i32
+                    instance_count as i32,
                 );
             } else {
-                self.gl.draw_elements_with_i32(
-                    mesh.render_primitive as u32,
-                    indices.count as i32,
-                    indices.kind,
-                    indices.offset
-                );
+                self.gl
+                    .draw_elements_with_i32(mesh.render_primitive as u32, indices.count as i32, indices.kind, indices.offset);
             }
         } else {
-            self.gl.draw_arrays(
-                mesh.render_primitive as u32,
-                0,
-                mesh.geometry.vertex_count as i32
-            );
+            self.gl
+                .draw_arrays(mesh.render_primitive as u32, 0, mesh.geometry.vertex_count as i32);
         }
-
     }
 
     pub fn compile_material(&mut self, material: &Material) {
@@ -223,15 +176,15 @@ impl App {
 
     fn create_webgl_buffer(&self, data: &[u8]) -> WebGlBuffer {
         let webgl_buffer = self.gl.create_buffer().unwrap();
-        self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
-        self.gl.buffer_data_with_u8_array(WebGl2RenderingContext::ARRAY_BUFFER, data, WebGl2RenderingContext::STATIC_DRAW);
+        self.gl.bind_buffer(GL::ARRAY_BUFFER, Some(&webgl_buffer));
+        self.gl.buffer_data_with_u8_array(GL::ARRAY_BUFFER, data, GL::STATIC_DRAW);
         webgl_buffer
     }
 
     fn update_webgl_buffer(&self, webgl_buffer_id: &u64, data: &[u8]) {
         let webgl_buffer = self.webgl_buffers.get(webgl_buffer_id).unwrap();
-        self.gl.bind_buffer(WebGl2RenderingContext::ARRAY_BUFFER, Some(&webgl_buffer));
-        self.gl.buffer_sub_data_with_i32_and_u8_array(WebGl2RenderingContext::ARRAY_BUFFER, 0, data);
+        self.gl.bind_buffer(GL::ARRAY_BUFFER, Some(&webgl_buffer));
+        self.gl.buffer_sub_data_with_i32_and_u8_array(GL::ARRAY_BUFFER, 0, data);
     }
 
     /// UBO

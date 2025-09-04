@@ -1,4 +1,4 @@
-use web_sys::{HtmlImageElement, WebGl2RenderingContext};
+use web_sys::{HtmlImageElement, WebGl2RenderingContext, WebGlTexture};
 
 use crate::utils::generate_id;
 
@@ -88,6 +88,53 @@ impl Texture {
             internal_format:      TextureFormat::RGBA,
             texture_data:         texture_data,
         }
+    }
+
+    pub fn create_webgl_texture(&self, gl: &WebGl2RenderingContext) -> WebGlTexture {
+        let webgl_texture = gl.create_texture().unwrap();
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&webgl_texture));
+
+        match &self.texture_data {
+            TextureData::HtmlImageElement(source) => {
+                gl.tex_image_2d_with_u32_and_u32_and_html_image_element(
+                    WebGl2RenderingContext::TEXTURE_2D,
+                    0,
+                    self.internal_format as i32,
+                    self.format as u32,
+                    self.data_type as u32,
+                    source,
+                )
+                .unwrap();
+            }
+            TextureData::ImagePixelData(data) => {
+                gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
+                    WebGl2RenderingContext::TEXTURE_2D,
+                    0,
+                    self.internal_format as i32,
+                    data.width as i32,
+                    data.height as i32,
+                    0,
+                    self.format as u32,
+                    self.data_type as u32,
+                    Some(&data.bytes),
+                )
+                .unwrap();
+            }
+        }
+
+        gl.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_MIN_FILTER,
+            self.minification_filter as i32,
+        );
+
+        gl.tex_parameteri(
+            WebGl2RenderingContext::TEXTURE_2D,
+            WebGl2RenderingContext::TEXTURE_MAG_FILTER,
+            self.magnification_filter as i32,
+        );
+
+        webgl_texture
     }
 }
 
