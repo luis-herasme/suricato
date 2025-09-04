@@ -264,3 +264,15 @@ impl Geometry {
         }
     }
 }
+
+impl From<InterleavedVertexBuffer> for Geometry {
+    fn from(interleaved_vertex_buffer: InterleavedVertexBuffer) -> Geometry {
+        Geometry {
+            instance_count:             None,
+            vertex_count:               interleaved_vertex_buffer.vertex_count(),
+            indices:                    None,
+            vertex_buffers:             vec![],
+            interleaved_vertex_buffers: vec![interleaved_vertex_buffer],
+        }
+    }
+}

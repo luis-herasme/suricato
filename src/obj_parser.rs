@@ -1,6 +1,9 @@
 use core::fmt;
 
-use crate::vertex_buffer::{Data, InterleavedVertexBuffer, VertexData};
+use crate::{
+    geometry::Geometry,
+    vertex_buffer::{Data, InterleavedVertexBuffer, VertexData},
+};
 
 #[derive(Clone, Debug)]
 pub struct OBJ {
@@ -11,7 +14,7 @@ pub struct OBJ {
 }
 
 impl OBJ {
-    pub fn to_interleaved_buffer(&self) -> Result<InterleavedVertexBuffer, OBJParseError> {
+    pub fn to_geometry(&self) -> Result<Geometry, OBJParseError> {
         let mut positions: Vec<[f32; 3]> = Vec::new();
         let mut normals: Vec<[f32; 3]> = Vec::new();
         let mut uvs: Vec<[f32; 2]> = Vec::new();
@@ -51,7 +54,7 @@ impl OBJ {
             normalize: false,
         };
 
-        Ok(InterleavedVertexBuffer::new(vec![positions, normals, uvs]))
+        Ok(Geometry::from(InterleavedVertexBuffer::new(vec![positions, normals, uvs])))
     }
 }
 

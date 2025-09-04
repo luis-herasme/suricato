@@ -1,6 +1,5 @@
 use glam::Quat;
 use suricato::{
-    geometry::Geometry,
     material::Material,
     mesh::Mesh,
     obj_parser::parse_obj,
@@ -51,15 +50,7 @@ void main() {
     let material = Material::new(vertex_shader_source, fragment_shader_source);
 
     let text = fetch_text("./luis.obj").await.unwrap();
-    let vertex_buffer = parse_obj(text).unwrap().to_interleaved_buffer().unwrap();
-
-    let geometry = Geometry {
-        instance_count:             None,
-        vertex_count:               vertex_buffer.vertex_count(),
-        indices:                    None,
-        vertex_buffers:             vec![],
-        interleaved_vertex_buffers: vec![vertex_buffer],
-    };
+    let geometry = parse_obj(text).unwrap().to_geometry().unwrap();
 
     let mut mesh = Mesh::new(geometry, material);
 
