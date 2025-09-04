@@ -1,7 +1,7 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::js_sys::{Array, Uint32Array};
+use web_sys::js_sys::{Array, ArrayBuffer, Uint8Array, Uint32Array};
 use web_sys::{HtmlImageElement, Response};
 
 static ID_COUNTER: AtomicU64 = AtomicU64::new(0);
@@ -32,6 +32,21 @@ pub async fn fetch_image(url: &str) -> Result<HtmlImageElement, JsValue> {
     Ok(image)
 }
 
+pub async fn fetch_bytes(url: &str) -> Result<Vec<u8>, JsValue> {
+    let window = web_sys::window().unwrap();
+    let response_value = JsFuture::from(window.fetch_with_str(url)).await?;
+    let response: Response = response_value.dyn_into()?;
+
+    let blob = JsFuture::from(response.blob()?).await?;
+    let array_buffer = JsFuture::from(blob.dyn_into::<web_sys::Blob>()?.array_buffer()).await?;
+    let array_buffer: ArrayBuffer = array_buffer.dyn_into()?;
+    let uint8_array = Uint8Array::new(&array_buffer);
+
+    let bytes = uint8_array.to_vec();
+
+    Ok(bytes)
+}
+
 pub async fn fetch_text(url: &str) -> Result<String, JsValue> {
     let window = web_sys::window().unwrap();
     let response_value = JsFuture::from(window.fetch_with_str(url)).await?;
@@ -51,4 +66,11 @@ pub fn js_value_to_vec_u32(array: JsValue) -> Vec<u32> {
 pub fn js_array_to_vec_u32(array: JsValue) -> Vec<u32> {
     let array: Array = array.dyn_into().unwrap();
     array.iter().map(|v| v.as_f64().unwrap() as u32).collect()
+}
+
+#[macro_export]
+macro_rules! log {
+    ($($arg:tt)*) => {
+        console::log_1(&(std::fmt::format(format_args!($($arg)*))).into());
+    }
 }
