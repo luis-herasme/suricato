@@ -1,13 +1,11 @@
 use std::collections::HashMap;
 
 use web_sys::wasm_bindgen::JsCast;
-use web_sys::{HtmlCanvasElement, WebGl2RenderingContext as GL, WebGlTexture, WebGlVertexArrayObject};
+use web_sys::{HtmlCanvasElement, WebGl2RenderingContext as GL, WebGlVertexArrayObject};
 
 use crate::{
-    material::MaterialResource,
     mesh::{Mesh, MeshId},
     ubo::UniformBufferObject,
-    uniforms::Uniform,
 };
 
 pub struct App {
@@ -16,7 +14,6 @@ pub struct App {
 
     // Resources
     vaos:                   HashMap<MeshId, WebGlVertexArrayObject>,
-    webgl_textures:         HashMap<u64, WebGlTexture>,
     uniform_buffer_objects: Vec<UniformBufferObject>,
 }
 
@@ -36,7 +33,6 @@ impl App {
             gl,
             canvas,
             vaos: HashMap::new(),
-            webgl_textures: HashMap::new(),
             uniform_buffer_objects: Vec::new(),
         }
     }
@@ -55,38 +51,10 @@ impl App {
             interleaved_vertex_buffer.on_render(&self.gl);
         }
 
-        if mesh.material.webgl_resources.is_none() {
-            let resource = MaterialResource::new(&self.gl, &mut mesh.material).unwrap();
-            mesh.material.webgl_resources = Some(resource);
-        }
-
-        let material_resource = mesh.material.webgl_resources.as_ref().unwrap();
-
-        material_resource.use_program();
+        mesh.material.on_render(&self.gl);
 
         for uniform_buffer_object in &self.uniform_buffer_objects {
             uniform_buffer_object.update(&self.gl);
-        }
-
-        for (name, ubo_binding_point) in mesh.material.commands.drain(..) {
-            material_resource.set_uniform_block(&name, ubo_binding_point);
-        }
-
-        // Set uniforms
-        let mut current_texture_unit = 0;
-        for (name, uniform) in &mesh.material.uniforms {
-            material_resource.set_uniform(&name, &uniform, current_texture_unit);
-            current_texture_unit = current_texture_unit + 1;
-
-            if let Uniform::Texture(texture) = uniform {
-                if !self.webgl_textures.contains_key(&texture.id) {
-                    let webgl_texture = texture.create_webgl_texture(&self.gl);
-                    self.webgl_textures.insert(texture.id, webgl_texture);
-                }
-
-                let webgl_texture = self.webgl_textures.get(&texture.id).unwrap();
-                self.gl.bind_texture(GL::TEXTURE_2D, Some(webgl_texture));
-            }
         }
 
         if !self.vaos.contains_key(&mesh.id) {
@@ -94,6 +62,8 @@ impl App {
             self.gl.bind_vertex_array(Some(&vao));
 
             // Set attributes
+            let material_resource = mesh.material.webgl_resources.as_ref().unwrap();
+
             for vertex_buffer in &mesh.geometry.vertex_buffers {
                 self.gl.bind_buffer(GL::ARRAY_BUFFER, vertex_buffer.buffer_gpu.as_ref());
                 material_resource.set_attribute_buffer(&vertex_buffer.layout);
