@@ -1,4 +1,4 @@
-use web_sys::{WebGl2RenderingContext, WebGlBuffer};
+use web_sys::{WebGl2RenderingContext as GL, WebGlBuffer};
 
 use crate::utils::{generate_id, to_bytes};
 
@@ -19,9 +19,9 @@ impl IndexData {
 
     fn kind(&self) -> u32 {
         match &self {
-            IndexData::UnsignedByte(_) => WebGl2RenderingContext::UNSIGNED_BYTE,
-            IndexData::UnsignedShort(_) => WebGl2RenderingContext::UNSIGNED_SHORT,
-            IndexData::UnsignedInt(_) => WebGl2RenderingContext::UNSIGNED_INT,
+            IndexData::UnsignedByte(_) => GL::UNSIGNED_BYTE,
+            IndexData::UnsignedShort(_) => GL::UNSIGNED_SHORT,
+            IndexData::UnsignedInt(_) => GL::UNSIGNED_INT,
         }
     }
 
@@ -39,11 +39,12 @@ impl IndexData {
 }
 
 pub struct IndexBuffer {
-    pub id:     u64,
-    pub data:   IndexData,
-    pub kind:   u32,
-    pub count:  usize,
-    pub offset: i32,
+    pub id:         u64,
+    pub buffer_cpu: IndexData,
+    pub buffer_gpu: Option<WebGlBuffer>,
+    pub kind:       u32,
+    pub count:      usize,
+    pub offset:     i32,
 }
 
 impl From<Vec<u8>> for IndexBuffer {
@@ -65,13 +66,14 @@ impl From<Vec<u32>> for IndexBuffer {
 }
 
 impl IndexBuffer {
-    pub fn new(data: IndexData) -> IndexBuffer {
+    pub fn new(buffer_cpu: IndexData) -> IndexBuffer {
         IndexBuffer {
             id: generate_id(),
             offset: 0,
-            kind: data.kind(),
-            count: data.count(),
-            data,
+            kind: buffer_cpu.kind(),
+            count: buffer_cpu.count(),
+            buffer_cpu,
+            buffer_gpu: None,
         }
     }
 
@@ -87,15 +89,10 @@ impl IndexBuffer {
         IndexBuffer::new(IndexData::UnsignedInt(data))
     }
 
-    pub fn create_webgl_buffer(&self, gl: &WebGl2RenderingContext) -> WebGlBuffer {
+    pub fn create_webgl_buffer(&mut self, gl: &GL) {
         let buffer = gl.create_buffer().unwrap();
-        gl.bind_buffer(WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER, Some(&buffer));
-        gl.buffer_data_with_u8_array(
-            WebGl2RenderingContext::ELEMENT_ARRAY_BUFFER,
-            self.data.bytes(),
-            WebGl2RenderingContext::STATIC_DRAW,
-        );
-
-        buffer
+        gl.bind_buffer(GL::ELEMENT_ARRAY_BUFFER, Some(&buffer));
+        gl.buffer_data_with_u8_array(GL::ELEMENT_ARRAY_BUFFER, self.buffer_cpu.bytes(), GL::STATIC_DRAW);
+        self.buffer_gpu = Some(buffer);
     }
 }

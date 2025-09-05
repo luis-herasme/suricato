@@ -99,8 +99,8 @@ void main() {
     let material = Material::new(vertex_shader_source, fragment_shader_source);
 
     let geometry = Geometry {
-        instance_count:             Some(index_buffer.count),
         vertex_count:               0,
+        instance_count:             None,
         indices:                    Some(index_buffer),
         vertex_buffers:             vec![],
         interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(vec![positions, normals])],

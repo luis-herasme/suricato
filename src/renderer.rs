@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use web_sys::wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext as GL, WebGlTexture, WebGlVertexArrayObject};
-use web_sys::{WebGlBuffer, wasm_bindgen::JsCast};
 
 use crate::{
     geometry::Geometry,
@@ -17,7 +17,6 @@ pub struct App {
 
     // Resources
     vaos:                   HashMap<MeshId, WebGlVertexArrayObject>,
-    webgl_buffers:          HashMap<u64, WebGlBuffer>,
     webgl_textures:         HashMap<u64, WebGlTexture>,
     uniform_buffer_objects: Vec<UniformBufferObject>,
 }
@@ -38,7 +37,6 @@ impl App {
             gl,
             canvas,
             vaos: HashMap::new(),
-            webgl_buffers: HashMap::new(),
             webgl_textures: HashMap::new(),
             uniform_buffer_objects: Vec::new(),
         }
@@ -92,14 +90,12 @@ impl App {
 
             // Set attributes
             for vertex_buffer in &mesh.geometry.vertex_buffers {
-                let buffer = self.webgl_buffers.get(&vertex_buffer.id).unwrap(); // Created at create_geometry_resource
-                self.gl.bind_buffer(GL::ARRAY_BUFFER, Some(&buffer));
+                self.gl.bind_buffer(GL::ARRAY_BUFFER, vertex_buffer.buffer_gpu.as_ref());
                 material_resource.set_attribute_buffer(&vertex_buffer.layout);
             }
 
             for vertex_buffer in &mesh.geometry.interleaved_vertex_buffers {
-                let buffer = self.webgl_buffers.get(&vertex_buffer.id).unwrap(); // Created at create_geometry_resource
-                self.gl.bind_buffer(GL::ARRAY_BUFFER, Some(&buffer));
+                self.gl.bind_buffer(GL::ARRAY_BUFFER, vertex_buffer.buffer_gpu.as_ref());
                 for vertex_layout in &vertex_buffer.layouts {
                     material_resource.set_attribute_buffer(vertex_layout);
                 }
@@ -113,9 +109,7 @@ impl App {
         self.gl.bind_vertex_array(vao);
 
         if let Some(indices) = &mesh.geometry.indices {
-            let index_webgl_buffer = self.webgl_buffers.get(&indices.id).unwrap(); // Created at create_geometry_resource
-
-            self.gl.bind_buffer(GL::ELEMENT_ARRAY_BUFFER, Some(&index_webgl_buffer));
+            self.gl.bind_buffer(GL::ELEMENT_ARRAY_BUFFER, indices.buffer_gpu.as_ref());
 
             if let Some(instance_count) = mesh.geometry.instance_count {
                 self.gl.draw_elements_instanced_with_i32(
@@ -137,48 +131,18 @@ impl App {
 
     fn geometry_buffers_create(&mut self, geometry: &mut Geometry) {
         for vertex_buffer in &mut geometry.vertex_buffers {
-            if !self.webgl_buffers.contains_key(&vertex_buffer.id) {
-                let webgl_buffer = self.create_webgl_buffer(&vertex_buffer.data);
-                self.webgl_buffers.insert(vertex_buffer.id, webgl_buffer);
-            }
-
-            if vertex_buffer.needs_update {
-                self.update_webgl_buffer(&vertex_buffer.id, &vertex_buffer.data);
-                vertex_buffer.needs_update = false;
-            }
+            vertex_buffer.on_render(&self.gl);
         }
 
         for interleaved_vertex_buffer in &mut geometry.interleaved_vertex_buffers {
-            if !self.webgl_buffers.contains_key(&interleaved_vertex_buffer.id) {
-                let webgl_buffer = self.create_webgl_buffer(&interleaved_vertex_buffer.data);
-                self.webgl_buffers.insert(interleaved_vertex_buffer.id, webgl_buffer);
-            }
-
-            if interleaved_vertex_buffer.needs_update {
-                self.update_webgl_buffer(&interleaved_vertex_buffer.id, &interleaved_vertex_buffer.data);
-                interleaved_vertex_buffer.needs_update = false;
-            }
+            interleaved_vertex_buffer.on_render(&self.gl);
         }
 
-        if let Some(indices) = &geometry.indices {
-            if !self.webgl_buffers.contains_key(&indices.id) {
-                let buffer = indices.create_webgl_buffer(&self.gl);
-                self.webgl_buffers.insert(indices.id, buffer);
+        if let Some(indices) = &mut geometry.indices {
+            if indices.buffer_gpu.is_none() {
+                indices.create_webgl_buffer(&self.gl);
             }
         }
-    }
-
-    fn create_webgl_buffer(&self, data: &[u8]) -> WebGlBuffer {
-        let webgl_buffer = self.gl.create_buffer().unwrap();
-        self.gl.bind_buffer(GL::ARRAY_BUFFER, Some(&webgl_buffer));
-        self.gl.buffer_data_with_u8_array(GL::ARRAY_BUFFER, data, GL::STATIC_DRAW);
-        webgl_buffer
-    }
-
-    fn update_webgl_buffer(&self, webgl_buffer_id: &u64, data: &[u8]) {
-        let webgl_buffer = self.webgl_buffers.get(webgl_buffer_id).unwrap();
-        self.gl.bind_buffer(GL::ARRAY_BUFFER, Some(&webgl_buffer));
-        self.gl.buffer_sub_data_with_i32_and_u8_array(GL::ARRAY_BUFFER, 0, data);
     }
 
     /// UBO

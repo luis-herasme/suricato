@@ -1,17 +1,17 @@
-use web_sys::WebGl2RenderingContext;
+use web_sys::{WebGl2RenderingContext as GL, WebGlBuffer};
 
 use crate::utils::{generate_id, to_bytes};
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy)]
 pub enum VertexComponentType {
-    Byte          = WebGl2RenderingContext::BYTE,
-    UnsignedByte  = WebGl2RenderingContext::UNSIGNED_BYTE,
-    Short         = WebGl2RenderingContext::SHORT,
-    UnsignedShort = WebGl2RenderingContext::UNSIGNED_SHORT,
-    Int           = WebGl2RenderingContext::INT,
-    UnsignedInt   = WebGl2RenderingContext::UNSIGNED_INT,
-    Float         = WebGl2RenderingContext::FLOAT,
+    Byte          = GL::BYTE,
+    UnsignedByte  = GL::UNSIGNED_BYTE,
+    Short         = GL::SHORT,
+    UnsignedShort = GL::UNSIGNED_SHORT,
+    Int           = GL::INT,
+    UnsignedInt   = GL::UNSIGNED_INT,
+    Float         = GL::FLOAT,
 }
 
 impl VertexComponentType {
@@ -354,12 +354,13 @@ pub struct VertexBuffer {
     /// Modifying this field directly does not affect the GPU copy of
     /// the buffer. After editing, set [`needs_update`] to `true` to
     /// signal that the buffer should be re-uploaded to the GPU.
-    pub data: Vec<u8>,
+    pub buffer_cpu: Vec<u8>,
+    pub buffer_gpu: Option<WebGlBuffer>,
 
-    /// Describes how the data inside [`data`] is laid out.
+    /// Describes how the data inside the buffer is laid out.
     pub layout: VertexLayout,
 
-    /// If `true`, the renderer should re-upload [`data`] to the GPU.
+    /// If `true`, the renderer should re-upload buffer to the GPU.
     pub needs_update: bool,
 }
 
@@ -379,22 +380,55 @@ impl VertexBuffer {
         VertexBuffer {
             id:           generate_id(),
             needs_update: false,
-            data:         vertex.data.to_bytes().to_vec(),
+            buffer_cpu:   vertex.data.to_bytes().to_vec(),
+            buffer_gpu:   None,
             layout:       layout,
         }
     }
+
+    /// Callend on every render. Creates and updates the WebGl resources when necessary
+    #[inline(always)]
+    pub fn on_render(&mut self, gl: &GL) {
+        if self.buffer_gpu.is_none() {
+            self.create_buffer_gpu(gl);
+        }
+
+        if self.needs_update {
+            self.update_buffer_gpu(gl);
+            self.needs_update = false;
+        }
+    }
+
+    ///
+    /// CPU BUFFER
+    ///
 
     /// Writes raw bytes into the buffer at a specific byte offset.
     #[inline]
     pub fn update<T>(&mut self, byte_offset: usize, value: &[T]) {
         let bytes = to_bytes(&value);
-        self.data[byte_offset..byte_offset + bytes.len()].copy_from_slice(bytes);
+        self.buffer_cpu[byte_offset..byte_offset + bytes.len()].copy_from_slice(bytes);
         self.needs_update = true;
     }
 
     #[inline]
     pub fn update_vertex<T>(&mut self, vertex_index: usize, value: &[T]) {
         self.update(vertex_index * self.layout.stride, value);
+    }
+
+    ///
+    /// GPU BUFFER
+    ///
+    fn create_buffer_gpu(&mut self, gl: &GL) {
+        let webgl_buffer = gl.create_buffer().unwrap();
+        gl.bind_buffer(GL::ARRAY_BUFFER, Some(&webgl_buffer));
+        gl.buffer_data_with_u8_array(GL::ARRAY_BUFFER, &self.buffer_cpu, GL::STATIC_DRAW);
+        self.buffer_gpu = Some(webgl_buffer);
+    }
+
+    fn update_buffer_gpu(&self, gl: &GL) {
+        gl.bind_buffer(GL::ARRAY_BUFFER, self.buffer_gpu.as_ref());
+        gl.buffer_sub_data_with_i32_and_u8_array(GL::ARRAY_BUFFER, 0, &self.buffer_cpu);
     }
 }
 
@@ -407,12 +441,13 @@ pub struct InterleavedVertexBuffer {
     /// Modifying this field directly does not affect the GPU copy of
     /// the buffer. After editing, set [`needs_update`] to `true` to
     /// signal that the buffer should be re-uploaded to the GPU.
-    pub data: Vec<u8>,
+    pub buffer_cpu: Vec<u8>,
+    pub buffer_gpu: Option<WebGlBuffer>,
 
-    /// Describes how the data inside [`data`] is laid out.
+    /// Describes how the data inside buffer is laid out.
     pub layouts: Vec<VertexLayout>,
 
-    /// If `true`, the renderer should re-upload [`data`] to the GPU.
+    /// If `true`, the renderer should re-upload buffer to the GPU.
     pub needs_update: bool,
 }
 
@@ -426,13 +461,27 @@ impl InterleavedVertexBuffer {
         InterleavedVertexBuffer {
             id: generate_id(),
             needs_update: false,
-            data,
+            buffer_cpu: data,
+            buffer_gpu: None,
             layouts,
         }
     }
 
+    /// Callend on every render. Creates and updates the WebGl resources when necessary
+    #[inline(always)]
+    pub fn on_render(&mut self, gl: &GL) {
+        if self.buffer_gpu.is_none() {
+            self.create_buffer_gpu(gl);
+        }
+
+        if self.needs_update {
+            self.update_buffer_gpu(gl);
+            self.needs_update = false;
+        }
+    }
+
     pub fn vertex_count(&self) -> usize {
-        self.data.len() / self.stride()
+        self.buffer_cpu.len() / self.stride()
     }
 
     pub fn stride(&self) -> usize {
@@ -475,7 +524,7 @@ impl InterleavedVertexBuffer {
     #[inline]
     pub fn update<T>(&mut self, byte_offset: usize, value: &[T]) {
         let bytes = to_bytes(&value);
-        self.data[byte_offset..byte_offset + bytes.len()].copy_from_slice(bytes);
+        self.buffer_cpu[byte_offset..byte_offset + bytes.len()].copy_from_slice(bytes);
         self.needs_update = true;
     }
 
@@ -507,5 +556,20 @@ impl InterleavedVertexBuffer {
         }
 
         None
+    }
+
+    ///
+    /// GPU BUFFER
+    ///
+    fn create_buffer_gpu(&mut self, gl: &GL) {
+        let webgl_buffer = gl.create_buffer().unwrap();
+        gl.bind_buffer(GL::ARRAY_BUFFER, Some(&webgl_buffer));
+        gl.buffer_data_with_u8_array(GL::ARRAY_BUFFER, &self.buffer_cpu, GL::STATIC_DRAW);
+        self.buffer_gpu = Some(webgl_buffer);
+    }
+
+    fn update_buffer_gpu(&self, gl: &GL) {
+        gl.bind_buffer(GL::ARRAY_BUFFER, self.buffer_gpu.as_ref());
+        gl.buffer_sub_data_with_i32_and_u8_array(GL::ARRAY_BUFFER, 0, &self.buffer_cpu);
     }
 }
