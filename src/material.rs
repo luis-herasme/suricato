@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use web_sys::{WebGl2RenderingContext as GL, WebGlProgram, WebGlShader, WebGlTexture, WebGlUniformLocation};
+use web_sys::{WebGl2RenderingContext as GL, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
 use crate::{uniforms::Uniform, vertex_buffer::VertexLayout};
 
@@ -8,7 +8,6 @@ pub struct Material {
     pub commands:           Vec<(String, u32)>,
     vertex_shader_source:   String,
     fragment_shader_source: String,
-    webgl_textures:         HashMap<u64, WebGlTexture>,
     pub webgl_resources:    Option<MaterialResource>,
 }
 
@@ -19,7 +18,6 @@ impl Material {
             fragment_shader_source: String::from(fragment_shader_source),
             uniforms:               HashMap::new(),
             commands:               Vec::new(),
-            webgl_textures:         HashMap::new(),
             webgl_resources:        None,
         }
     }
@@ -50,16 +48,11 @@ impl Material {
         let mut current_texture_unit = 0;
         for (name, uniform) in &self.uniforms {
             material_resource.set_uniform(&name, &uniform, current_texture_unit);
-            current_texture_unit = current_texture_unit + 1;
 
             if let Uniform::Texture(texture) = uniform {
-                if !self.webgl_textures.contains_key(&texture.id) {
-                    let webgl_texture = texture.create_webgl_texture(gl);
-                    self.webgl_textures.insert(texture.id, webgl_texture);
-                }
-
-                let webgl_texture = self.webgl_textures.get(&texture.id).unwrap();
+                let webgl_texture = texture.get_or_create_webgl_texture(gl);
                 gl.bind_texture(GL::TEXTURE_2D, Some(webgl_texture));
+                current_texture_unit = current_texture_unit + 1;
             }
         }
     }

@@ -1,7 +1,5 @@
 use web_sys::{HtmlImageElement, WebGl2RenderingContext, WebGlTexture};
 
-use crate::utils::generate_id;
-
 #[repr(u32)]
 #[derive(Copy, Clone, Debug)]
 pub enum MinificationFilter {
@@ -51,7 +49,6 @@ pub enum TextureDataType {
 /// https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/texParameter#pname
 #[derive(Clone, Debug)]
 pub struct Texture {
-    pub id:                   u64,
     pub minification_filter:  MinificationFilter,
     pub magnification_filter: MagnificationFilter,
     pub wrap_horizontal:      Wrap,
@@ -60,6 +57,7 @@ pub struct Texture {
     pub format:               TextureFormat,
     pub internal_format:      TextureFormat,
     pub texture_data:         TextureData,
+    pub webgl_texture:        Option<WebGlTexture>,
 }
 
 #[derive(Clone, Debug)]
@@ -78,7 +76,6 @@ pub struct ImagePixelData {
 impl Texture {
     pub fn new(texture_data: TextureData) -> Texture {
         Texture {
-            id:                   generate_id(),
             minification_filter:  MinificationFilter::Nearest,
             magnification_filter: MagnificationFilter::Nearest,
             wrap_horizontal:      Wrap::Repeat,
@@ -87,10 +84,19 @@ impl Texture {
             format:               TextureFormat::RGBA,
             internal_format:      TextureFormat::RGBA,
             texture_data:         texture_data,
+            webgl_texture:        None,
         }
     }
 
-    pub fn create_webgl_texture(&self, gl: &WebGl2RenderingContext) -> WebGlTexture {
+    pub fn get_or_create_webgl_texture(&self, gl: &WebGl2RenderingContext) -> &WebGlTexture {
+        if self.webgl_texture.is_none() {
+            self.create_webgl_texture(gl);
+        }
+
+        self.webgl_texture.as_ref().unwrap()
+    }
+
+    fn create_webgl_texture(&self, gl: &WebGl2RenderingContext) -> WebGlTexture {
         let webgl_texture = gl.create_texture().unwrap();
         gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&webgl_texture));
 
