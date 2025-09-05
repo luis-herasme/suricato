@@ -4,7 +4,6 @@ use web_sys::wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext as GL, WebGlTexture, WebGlVertexArrayObject};
 
 use crate::{
-    geometry::Geometry,
     material::MaterialResource,
     mesh::{Mesh, MeshId},
     ubo::UniformBufferObject,
@@ -48,7 +47,13 @@ impl App {
     }
 
     pub fn render(&mut self, mesh: &mut Mesh) {
-        self.geometry_buffers_create(&mut mesh.geometry);
+        for vertex_buffer in &mut mesh.geometry.vertex_buffers {
+            vertex_buffer.on_render(&self.gl);
+        }
+
+        for interleaved_vertex_buffer in &mut mesh.geometry.interleaved_vertex_buffers {
+            interleaved_vertex_buffer.on_render(&self.gl);
+        }
 
         if mesh.material.webgl_resources.is_none() {
             let resource = MaterialResource::new(&self.gl, &mut mesh.material).unwrap();
@@ -108,8 +113,9 @@ impl App {
         let vao = self.vaos.get(&mesh.id);
         self.gl.bind_vertex_array(vao);
 
-        if let Some(indices) = &mesh.geometry.indices {
-            self.gl.bind_buffer(GL::ELEMENT_ARRAY_BUFFER, indices.buffer_gpu.as_ref());
+        if let Some(indices) = &mut mesh.geometry.indices {
+            let indices_webgl_buffer = indices.get_or_create_gpu_buffer(&self.gl);
+            self.gl.bind_buffer(GL::ELEMENT_ARRAY_BUFFER, Some(indices_webgl_buffer));
 
             if let Some(instance_count) = mesh.geometry.instance_count {
                 self.gl.draw_elements_instanced_with_i32(
@@ -126,22 +132,6 @@ impl App {
         } else {
             self.gl
                 .draw_arrays(mesh.render_primitive as u32, 0, mesh.geometry.vertex_count as i32);
-        }
-    }
-
-    fn geometry_buffers_create(&mut self, geometry: &mut Geometry) {
-        for vertex_buffer in &mut geometry.vertex_buffers {
-            vertex_buffer.on_render(&self.gl);
-        }
-
-        for interleaved_vertex_buffer in &mut geometry.interleaved_vertex_buffers {
-            interleaved_vertex_buffer.on_render(&self.gl);
-        }
-
-        if let Some(indices) = &mut geometry.indices {
-            if indices.buffer_gpu.is_none() {
-                indices.create_webgl_buffer(&self.gl);
-            }
         }
     }
 

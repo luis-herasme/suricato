@@ -40,11 +40,11 @@ impl IndexData {
 
 pub struct IndexBuffer {
     pub id:         u64,
-    pub buffer_cpu: IndexData,
-    pub buffer_gpu: Option<WebGlBuffer>,
     pub kind:       u32,
     pub count:      usize,
     pub offset:     i32,
+    pub buffer_cpu: IndexData,
+    pub buffer_gpu:     Option<WebGlBuffer>,
 }
 
 impl From<Vec<u8>> for IndexBuffer {
@@ -89,7 +89,15 @@ impl IndexBuffer {
         IndexBuffer::new(IndexData::UnsignedInt(data))
     }
 
-    pub fn create_webgl_buffer(&mut self, gl: &GL) {
+    pub fn get_or_create_gpu_buffer(&mut self, gl: &GL) -> &WebGlBuffer {
+        if self.buffer_gpu.is_none() {
+            self.create_webgl_buffer(gl);
+        }
+
+        self.buffer_gpu.as_ref().unwrap()
+    }
+
+    fn create_webgl_buffer(&mut self, gl: &GL) {
         let buffer = gl.create_buffer().unwrap();
         gl.bind_buffer(GL::ELEMENT_ARRAY_BUFFER, Some(&buffer));
         gl.buffer_data_with_u8_array(GL::ELEMENT_ARRAY_BUFFER, self.buffer_cpu.bytes(), GL::STATIC_DRAW);
