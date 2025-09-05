@@ -3,6 +3,17 @@ use web_sys::{WebGl2RenderingContext as GL, WebGlProgram, WebGlShader, WebGlUnif
 
 use crate::{uniforms::Uniform, vertex_buffer::VertexLayout};
 
+#[derive(Debug)]
+pub enum MaterialError {
+    // Program
+    ProgramCreationFailed,
+    ProgramLinkingFailed(Option<String>),
+
+    // Shader
+    ShaderCreationFailed,
+    ShaderCompilationFailed(Option<String>),
+}
+
 pub struct Material {
     pub uniforms:           HashMap<String, Uniform>,
     pub commands:           Vec<(String, u32)>,
@@ -30,9 +41,9 @@ impl Material {
         self.commands.push((name.to_string(), ubo_binding_point));
     }
 
-    pub fn on_before_render(&mut self, gl: &GL) {
+    pub fn on_before_render(&mut self, gl: &GL) -> Result<(), MaterialError> {
         if self.webgl_resources.is_none() {
-            let resource = MaterialResource::new(gl, &self).unwrap();
+            let resource = MaterialResource::new(gl, &self)?;
             self.webgl_resources = Some(resource);
         }
 
@@ -55,6 +66,8 @@ impl Material {
                 current_texture_unit = current_texture_unit + 1;
             }
         }
+
+        Ok(())
     }
 }
 
@@ -67,8 +80,8 @@ pub struct MaterialResource {
 }
 
 impl MaterialResource {
-    pub fn new(gl: &GL, material: &Material) -> Result<MaterialResource, String> {
-        let webgl_program = gl.create_program().ok_or_else(|| String::from("Could not create program"))?;
+    pub fn new(gl: &GL, material: &Material) -> Result<MaterialResource, MaterialError> {
+        let webgl_program = gl.create_program().ok_or_else(|| MaterialError::ProgramCreationFailed)?;
 
         let vertex_shader = MaterialResource::compile_shader(&gl, &material.vertex_shader_source, GL::VERTEX_SHADER)?;
         let fragment_shader = MaterialResource::compile_shader(&gl, &material.fragment_shader_source, GL::FRAGMENT_SHADER)?;
@@ -92,25 +105,20 @@ impl MaterialResource {
                 uniform_block_locations,
             })
         } else {
-            Err(gl
-                .get_program_info_log(&webgl_program)
-                .unwrap_or_else(|| "Error linking program".to_string()))
+            Err(MaterialError::ProgramLinkingFailed(gl.get_program_info_log(&webgl_program)))
         }
     }
 
-    fn compile_shader(gl: &GL, shader_source: &str, shader_type: u32) -> Result<WebGlShader, String> {
-        let shader = gl
-            .create_shader(shader_type)
-            .ok_or_else(|| String::from("Unable to create shader"))?;
+    fn compile_shader(gl: &GL, shader_source: &str, shader_type: u32) -> Result<WebGlShader, MaterialError> {
+        let shader = gl.create_shader(shader_type).ok_or_else(|| MaterialError::ShaderCreationFailed)?;
         gl.shader_source(&shader, &shader_source);
         gl.compile_shader(&shader);
         let shader_status_is_ok = gl.get_shader_parameter(&shader, GL::COMPILE_STATUS).as_bool().unwrap_or(false);
+
         if shader_status_is_ok {
             Ok(shader)
         } else {
-            Err(gl
-                .get_shader_info_log(&shader)
-                .unwrap_or_else(|| "Error creating shader".to_string()))
+            Err(MaterialError::ShaderCompilationFailed(gl.get_shader_info_log(&shader)))
         }
     }
 
