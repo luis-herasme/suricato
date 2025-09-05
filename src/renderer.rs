@@ -1,7 +1,7 @@
 use web_sys::wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext as GL};
 
-use crate::{mesh::Mesh, ubo::UniformBufferObject};
+use crate::{buffer_gpu::BufferGPU, mesh::Mesh, ubo::UniformBufferObject};
 
 pub struct App {
     pub gl:                 GL,
@@ -42,11 +42,11 @@ impl App {
             interleaved_vertex_buffer.buffer.on_before_render(&self.gl);
         }
 
-        mesh.material.on_render(&self.gl);
-
-        for uniform_buffer_object in &self.uniform_buffer_objects {
-            uniform_buffer_object.update(&self.gl);
+        for uniform_buffer_object in &mut self.uniform_buffer_objects {
+            uniform_buffer_object.buffer.on_before_render(&self.gl);
         }
+
+        mesh.material.on_before_render(&self.gl);
 
         let vao = mesh.get_or_create_vao(&self.gl);
         self.gl.bind_vertex_array(Some(vao));
@@ -74,14 +74,19 @@ impl App {
     }
 
     /// UBO
-    pub fn create_ubo(&mut self) -> u32 {
-        let ubo_binding_point = self.uniform_buffer_objects.len() as u32;
-        let ubo = UniformBufferObject::new(&self.gl, ubo_binding_point);
+    pub fn create_ubo(&mut self, data: Vec<u8>) -> usize {
+        let ubo_binding_point = self.uniform_buffer_objects.len();
+
+        let ubo = UniformBufferObject {
+            binding_point: ubo_binding_point,
+            buffer:        BufferGPU::uniform_buffer(data),
+        };
+
         self.uniform_buffer_objects.push(ubo);
         ubo_binding_point
     }
 
-    pub fn set_ubo(&mut self, ubo_binding_point: u32, value: Vec<u8>) {
-        self.uniform_buffer_objects[ubo_binding_point as usize].set_buffer(value);
+    pub fn set_ubo(&mut self, ubo_binding_point: usize, value: &[u8]) {
+        self.uniform_buffer_objects[ubo_binding_point].buffer.set(0, value);
     }
 }

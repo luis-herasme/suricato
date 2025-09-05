@@ -30,7 +30,7 @@ impl Material {
         self.commands.push((name.to_string(), ubo_binding_point));
     }
 
-    pub fn on_render(&mut self, gl: &GL) {
+    pub fn on_before_render(&mut self, gl: &GL) {
         if self.webgl_resources.is_none() {
             let resource = MaterialResource::new(gl, &self).unwrap();
             self.webgl_resources = Some(resource);

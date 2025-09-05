@@ -364,7 +364,7 @@ impl VertexBuffer {
         };
 
         VertexBuffer {
-            buffer: BufferGPU::new(vertex.data.to_bytes().to_vec()),
+            buffer: BufferGPU::array_buffer(vertex.data.to_bytes().to_vec()),
             layout: layout,
         }
     }
@@ -388,7 +388,7 @@ impl InterleavedVertexBuffer {
         let data = InterleavedVertexBuffer::vertex_data_array_to_bytes(&data, &layouts);
 
         InterleavedVertexBuffer {
-            buffer: BufferGPU::new(data),
+            buffer: BufferGPU::array_buffer(data),
             layouts,
         }
     }
