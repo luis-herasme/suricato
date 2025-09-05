@@ -1,4 +1,5 @@
 use crate::{
+    buffer_gpu::BufferUsage,
     index_buffer::IndexBuffer,
     obj_parser::OBJ,
     transform::Transform2D,
@@ -244,12 +245,12 @@ impl Geometry {
             divisor:   0,
         };
 
-        let vertex_buffers = vec![
-            VertexBuffer::new(color),
-            VertexBuffer::new(position),
-            VertexBuffer::new(texture_coordinate),
-            VertexBuffer::new(per_instance_transforms),
-        ];
+        let color = VertexBuffer::new(color);
+        let position = VertexBuffer::new(position);
+        let texture_coordinate = VertexBuffer::new(texture_coordinate);
+
+        let mut per_instance_transforms = VertexBuffer::new(per_instance_transforms);
+        per_instance_transforms.buffer.set_usage(BufferUsage::DynamicDraw);
 
         let indices = IndexBuffer::from_u8(vec![
             0, 1, 2, // Triangle #1
@@ -257,11 +258,11 @@ impl Geometry {
         ]);
 
         Geometry {
-            vertex_count: 4,
-            indices: Some(indices),
-            instance_count: Some(count),
+            vertex_count:               4,
+            indices:                    Some(indices),
+            instance_count:             Some(count),
             interleaved_vertex_buffers: vec![],
-            vertex_buffers,
+            vertex_buffers:             vec![color, position, texture_coordinate, per_instance_transforms],
         }
     }
 }

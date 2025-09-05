@@ -57,6 +57,15 @@ impl BufferGPU {
         }
     }
 
+    /// Sets the intended usage pattern for the buffer (e.g., STATIC_DRAW or DYNAMIC_DRAW).
+    ///
+    /// ⚠️ Note: This must be called *before* the buffer is uploaded to the GPU via
+    /// [`on_before_render`]. Once the buffer has been created on the GPU, changing
+    /// the usage will have no effect.
+    pub fn set_usage(&mut self, usage: BufferUsage) {
+        self.usage = usage;
+    }
+
     #[inline]
     pub fn set<T>(&mut self, byte_offset: usize, value: &[T]) {
         let bytes = to_bytes(&value);
