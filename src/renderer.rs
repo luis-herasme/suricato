@@ -35,11 +35,11 @@ impl App {
 
     pub fn render(&mut self, mesh: &mut Mesh) {
         for vertex_buffer in &mut mesh.geometry.vertex_buffers {
-            vertex_buffer.on_render(&self.gl);
+            vertex_buffer.buffer.on_before_render(&self.gl);
         }
 
         for interleaved_vertex_buffer in &mut mesh.geometry.interleaved_vertex_buffers {
-            interleaved_vertex_buffer.on_render(&self.gl);
+            interleaved_vertex_buffer.buffer.on_before_render(&self.gl);
         }
 
         mesh.material.on_render(&self.gl);

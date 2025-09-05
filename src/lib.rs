@@ -1,3 +1,4 @@
+pub mod buffer_gpu;
 pub mod geometry;
 pub mod index_buffer;
 pub mod material;

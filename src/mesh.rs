@@ -48,12 +48,12 @@ impl Mesh {
         let material_resource = self.material.webgl_resources.as_ref().unwrap();
 
         for vertex_buffer in &self.geometry.vertex_buffers {
-            gl.bind_buffer(GL::ARRAY_BUFFER, vertex_buffer.buffer_gpu.as_ref());
+            vertex_buffer.buffer.bind(gl);
             material_resource.set_attribute_buffer(&vertex_buffer.layout);
         }
 
         for vertex_buffer in &self.geometry.interleaved_vertex_buffers {
-            gl.bind_buffer(GL::ARRAY_BUFFER, vertex_buffer.buffer_gpu.as_ref());
+            vertex_buffer.buffer.bind(gl);
             for vertex_layout in &vertex_buffer.layouts {
                 material_resource.set_attribute_buffer(vertex_layout);
             }
