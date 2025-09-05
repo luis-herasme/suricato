@@ -17,6 +17,12 @@ pub enum BufferUsage {
     DynamicDraw = GL::DYNAMIC_DRAW,
 }
 
+#[derive(Debug)]
+pub enum BufferError {
+    UsageChangeAfterCreation,
+    CreationFailed,
+}
+
 #[derive(Debug, Clone)]
 pub struct BufferGPU {
     kind:         BufferKind,
@@ -57,13 +63,13 @@ impl BufferGPU {
         }
     }
 
-    /// Sets the intended usage pattern for the buffer (e.g., STATIC_DRAW or DYNAMIC_DRAW).
-    ///
-    /// ⚠️ Note: This must be called *before* the buffer is uploaded to the GPU via
-    /// [`on_before_render`]. Once the buffer has been created on the GPU, changing
-    /// the usage will have no effect.
-    pub fn set_usage(&mut self, usage: BufferUsage) {
+    pub fn set_usage(&mut self, usage: BufferUsage) -> Result<(), BufferError> {
+        if self.buffer_gpu.is_some() {
+            return Err(BufferError::UsageChangeAfterCreation);
+        }
+
         self.usage = usage;
+        Ok(())
     }
 
     #[inline]
@@ -74,15 +80,17 @@ impl BufferGPU {
     }
 
     #[inline(always)]
-    pub fn on_before_render(&mut self, gl: &GL) {
+    pub fn on_before_render(&mut self, gl: &GL) -> Result<(), BufferError> {
         if self.buffer_gpu.is_none() {
-            self.create_buffer_gpu(gl);
+            self.create_buffer_gpu(gl)?;
         }
 
         if self.needs_update {
             self.update_buffer_gpu(gl);
             self.needs_update = false;
         }
+
+        Ok(())
     }
 
     pub fn bind(&self, gl: &GL) {
@@ -93,11 +101,15 @@ impl BufferGPU {
         self.buffer_cpu.len()
     }
 
-    fn create_buffer_gpu(&mut self, gl: &GL) {
-        let webgl_buffer = gl.create_buffer().unwrap();
+    fn create_buffer_gpu(&mut self, gl: &GL) -> Result<(), BufferError> {
+        let Some(webgl_buffer) = gl.create_buffer() else {
+            return Err(BufferError::CreationFailed);
+        };
+
         gl.bind_buffer(self.kind as u32, Some(&webgl_buffer));
         gl.buffer_data_with_u8_array(self.kind as u32, &self.buffer_cpu, self.usage as u32);
         self.buffer_gpu = Some(webgl_buffer);
+        Ok(())
     }
 
     fn update_buffer_gpu(&self, gl: &GL) {

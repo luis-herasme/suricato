@@ -250,7 +250,7 @@ impl Geometry {
         let texture_coordinate = VertexBuffer::new(texture_coordinate);
 
         let mut per_instance_transforms = VertexBuffer::new(per_instance_transforms);
-        per_instance_transforms.buffer.set_usage(BufferUsage::DynamicDraw);
+        per_instance_transforms.buffer.set_usage(BufferUsage::DynamicDraw).unwrap();
 
         let indices = IndexBuffer::from_u8(vec![
             0, 1, 2, // Triangle #1
