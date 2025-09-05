@@ -1,24 +1,24 @@
 use std::collections::HashMap;
 use web_sys::{WebGl2RenderingContext as GL, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
-use crate::{uniforms::Uniform, utils::generate_id, vertex_buffer::VertexLayout};
+use crate::{uniforms::Uniform, vertex_buffer::VertexLayout};
 
 pub struct Material {
-    pub id:                 u64,
     pub uniforms:           HashMap<String, Uniform>,
     pub commands:           Vec<(String, u32)>,
     vertex_shader_source:   String,
     fragment_shader_source: String,
+    pub webgl_resources:    Option<MaterialResource>,
 }
 
 impl Material {
     pub fn new(vertex_shader_source: &str, fragment_shader_source: &str) -> Material {
         Material {
-            id:                     generate_id(),
             vertex_shader_source:   String::from(vertex_shader_source),
             fragment_shader_source: String::from(fragment_shader_source),
             uniforms:               HashMap::new(),
             commands:               Vec::new(),
+            webgl_resources:        None,
         }
     }
 

@@ -5,7 +5,7 @@ use web_sys::{WebGlBuffer, wasm_bindgen::JsCast};
 
 use crate::{
     geometry::Geometry,
-    material::{Material, MaterialResource},
+    material::MaterialResource,
     mesh::{Mesh, MeshId},
     ubo::UniformBufferObject,
     uniforms::Uniform,
@@ -17,7 +17,6 @@ pub struct App {
 
     // Resources
     vaos:                   HashMap<MeshId, WebGlVertexArrayObject>,
-    materials:              HashMap<u64, MaterialResource>,
     webgl_buffers:          HashMap<u64, WebGlBuffer>,
     webgl_textures:         HashMap<u64, WebGlTexture>,
     uniform_buffer_objects: Vec<UniformBufferObject>,
@@ -39,7 +38,6 @@ impl App {
             gl,
             canvas,
             vaos: HashMap::new(),
-            materials: HashMap::new(),
             webgl_buffers: HashMap::new(),
             webgl_textures: HashMap::new(),
             uniform_buffer_objects: Vec::new(),
@@ -54,11 +52,12 @@ impl App {
     pub fn render(&mut self, mesh: &mut Mesh) {
         self.geometry_buffers_create(&mut mesh.geometry);
 
-        if !self.materials.contains_key(&mesh.material.id) {
-            self.compile_material(&mut mesh.material);
+        if mesh.material.webgl_resources.is_none() {
+            let resource = MaterialResource::new(&self.gl, &mut mesh.material).unwrap();
+            mesh.material.webgl_resources = Some(resource);
         }
 
-        let material_resource = self.materials.get(&mesh.material.id).unwrap();
+        let material_resource = mesh.material.webgl_resources.as_ref().unwrap();
 
         material_resource.use_program();
 
@@ -134,11 +133,6 @@ impl App {
             self.gl
                 .draw_arrays(mesh.render_primitive as u32, 0, mesh.geometry.vertex_count as i32);
         }
-    }
-
-    pub fn compile_material(&mut self, material: &Material) {
-        let resource = MaterialResource::new(&self.gl, material).unwrap();
-        self.materials.insert(material.id, resource);
     }
 
     fn geometry_buffers_create(&mut self, geometry: &mut Geometry) {
