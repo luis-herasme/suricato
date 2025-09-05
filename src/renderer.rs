@@ -1,19 +1,11 @@
-use std::collections::HashMap;
-
 use web_sys::wasm_bindgen::JsCast;
-use web_sys::{HtmlCanvasElement, WebGl2RenderingContext as GL, WebGlVertexArrayObject};
+use web_sys::{HtmlCanvasElement, WebGl2RenderingContext as GL};
 
-use crate::{
-    mesh::{Mesh, MeshId},
-    ubo::UniformBufferObject,
-};
+use crate::{mesh::Mesh, ubo::UniformBufferObject};
 
 pub struct App {
-    pub gl:     GL,
-    pub canvas: HtmlCanvasElement,
-
-    // Resources
-    vaos:                   HashMap<MeshId, WebGlVertexArrayObject>,
+    pub gl:                 GL,
+    pub canvas:             HtmlCanvasElement,
     uniform_buffer_objects: Vec<UniformBufferObject>,
 }
 
@@ -32,7 +24,6 @@ impl App {
         App {
             gl,
             canvas,
-            vaos: HashMap::new(),
             uniform_buffer_objects: Vec::new(),
         }
     }
@@ -57,31 +48,8 @@ impl App {
             uniform_buffer_object.update(&self.gl);
         }
 
-        if !self.vaos.contains_key(&mesh.id) {
-            let vao = self.gl.create_vertex_array().unwrap();
-            self.gl.bind_vertex_array(Some(&vao));
-
-            // Set attributes
-            let material_resource = mesh.material.webgl_resources.as_ref().unwrap();
-
-            for vertex_buffer in &mesh.geometry.vertex_buffers {
-                self.gl.bind_buffer(GL::ARRAY_BUFFER, vertex_buffer.buffer_gpu.as_ref());
-                material_resource.set_attribute_buffer(&vertex_buffer.layout);
-            }
-
-            for vertex_buffer in &mesh.geometry.interleaved_vertex_buffers {
-                self.gl.bind_buffer(GL::ARRAY_BUFFER, vertex_buffer.buffer_gpu.as_ref());
-                for vertex_layout in &vertex_buffer.layouts {
-                    material_resource.set_attribute_buffer(vertex_layout);
-                }
-            }
-
-            self.gl.bind_vertex_array(None);
-            self.vaos.insert(mesh.id, vao);
-        }
-
-        let vao = self.vaos.get(&mesh.id);
-        self.gl.bind_vertex_array(vao);
+        let vao = mesh.get_or_create_vao(&self.gl);
+        self.gl.bind_vertex_array(Some(vao));
 
         if let Some(indices) = &mut mesh.geometry.indices {
             let indices_webgl_buffer = indices.get_or_create_gpu_buffer(&self.gl);
