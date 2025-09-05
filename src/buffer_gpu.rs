@@ -5,13 +5,22 @@ use crate::utils::to_bytes;
 #[repr(u32)]
 #[derive(Debug, Clone, Copy)]
 pub enum BufferKind {
-    ArrayBuffer   = GL::ARRAY_BUFFER,
-    UniformBuffer = GL::UNIFORM_BUFFER,
+    ArrayBuffer        = GL::ARRAY_BUFFER,
+    UniformBuffer      = GL::UNIFORM_BUFFER,
+    ElementArrayBuffer = GL::ELEMENT_ARRAY_BUFFER,
+}
+
+#[repr(u32)]
+#[derive(Debug, Clone, Copy)]
+pub enum BufferUsage {
+    StaticDraw  = GL::STATIC_DRAW,
+    DynamicDraw = GL::DYNAMIC_DRAW,
 }
 
 #[derive(Debug, Clone)]
 pub struct BufferGPU {
     kind:         BufferKind,
+    usage:        BufferUsage,
     buffer_cpu:   Vec<u8>,
     buffer_gpu:   Option<WebGlBuffer>,
     needs_update: bool,
@@ -21,6 +30,7 @@ impl BufferGPU {
     pub fn array_buffer(data: Vec<u8>) -> BufferGPU {
         BufferGPU {
             kind:         BufferKind::ArrayBuffer,
+            usage:        BufferUsage::StaticDraw,
             buffer_cpu:   data,
             buffer_gpu:   None,
             needs_update: false,
@@ -30,6 +40,17 @@ impl BufferGPU {
     pub fn uniform_buffer(data: Vec<u8>) -> BufferGPU {
         BufferGPU {
             kind:         BufferKind::UniformBuffer,
+            usage:        BufferUsage::DynamicDraw,
+            buffer_cpu:   data,
+            buffer_gpu:   None,
+            needs_update: false,
+        }
+    }
+
+    pub fn index_buffer(data: Vec<u8>) -> BufferGPU {
+        BufferGPU {
+            kind:         BufferKind::ElementArrayBuffer,
+            usage:        BufferUsage::StaticDraw,
             buffer_cpu:   data,
             buffer_gpu:   None,
             needs_update: false,
@@ -66,7 +87,7 @@ impl BufferGPU {
     fn create_buffer_gpu(&mut self, gl: &GL) {
         let webgl_buffer = gl.create_buffer().unwrap();
         gl.bind_buffer(self.kind as u32, Some(&webgl_buffer));
-        gl.buffer_data_with_u8_array(self.kind as u32, &self.buffer_cpu, GL::STATIC_DRAW);
+        gl.buffer_data_with_u8_array(self.kind as u32, &self.buffer_cpu, self.usage as u32);
         self.buffer_gpu = Some(webgl_buffer);
     }
 

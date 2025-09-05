@@ -52,20 +52,24 @@ impl App {
         self.gl.bind_vertex_array(Some(vao));
 
         if let Some(indices) = &mut mesh.geometry.indices {
-            let indices_webgl_buffer = indices.get_or_create_gpu_buffer(&self.gl);
-            self.gl.bind_buffer(GL::ELEMENT_ARRAY_BUFFER, Some(indices_webgl_buffer));
+            indices.buffer.on_before_render(&self.gl);
+            indices.buffer.bind(&self.gl);
 
             if let Some(instance_count) = mesh.geometry.instance_count {
                 self.gl.draw_elements_instanced_with_i32(
                     mesh.render_primitive as u32,
                     indices.count as i32,
                     indices.kind,
-                    indices.offset,
+                    indices.offset as i32,
                     instance_count as i32,
                 );
             } else {
-                self.gl
-                    .draw_elements_with_i32(mesh.render_primitive as u32, indices.count as i32, indices.kind, indices.offset);
+                self.gl.draw_elements_with_i32(
+                    mesh.render_primitive as u32,
+                    indices.count as i32,
+                    indices.kind,
+                    indices.offset as i32,
+                );
             }
         } else {
             self.gl
