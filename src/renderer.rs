@@ -86,7 +86,7 @@ impl App {
         ubo_binding_point
     }
 
-    pub fn set_ubo(&mut self, ubo_binding_point: usize, value: &[u8]) {
-        self.uniform_buffer_objects[ubo_binding_point].buffer.set(0, value);
+    pub fn get_ubo(&mut self, ubo_binding_point: usize) -> &UniformBufferObject {
+        &self.uniform_buffer_objects[ubo_binding_point]
     }
 }
