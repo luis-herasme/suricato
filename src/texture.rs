@@ -45,6 +45,25 @@ pub enum TextureDataType {
     UnsignedShort5551 = WebGl2RenderingContext::UNSIGNED_SHORT_5_5_5_1,
 }
 
+#[derive(Clone, Debug)]
+pub enum TextureData {
+    HtmlImageElement(HtmlImageElement),
+    ImagePixelData(ImagePixelData),
+}
+
+#[derive(Clone, Debug)]
+pub struct ImagePixelData {
+    pub width:  u32,
+    pub height: u32,
+    pub bytes:  Vec<u8>,
+}
+
+#[derive(Debug)]
+pub enum TextureError {
+    CreationFailed,
+    DataUploadFailed,
+}
+
 /// Extracted from:
 /// https://developer.mozilla.org/en-US/docs/Web/API/WebGLRenderingContext/texParameter#pname
 #[derive(Clone, Debug)]
@@ -58,19 +77,6 @@ pub struct Texture {
     pub internal_format:      TextureFormat,
     pub texture_data:         TextureData,
     pub webgl_texture:        Option<WebGlTexture>,
-}
-
-#[derive(Clone, Debug)]
-pub enum TextureData {
-    HtmlImageElement(HtmlImageElement),
-    ImagePixelData(ImagePixelData),
-}
-
-#[derive(Clone, Debug)]
-pub struct ImagePixelData {
-    pub width:  u32,
-    pub height: u32,
-    pub bytes:  Vec<u8>,
 }
 
 impl Texture {
@@ -88,16 +94,20 @@ impl Texture {
         }
     }
 
-    pub fn get_or_create_webgl_texture(&self, gl: &WebGl2RenderingContext) -> &WebGlTexture {
+    pub fn get_or_create_webgl_texture(&mut self, gl: &WebGl2RenderingContext) -> Result<&WebGlTexture, TextureError> {
         if self.webgl_texture.is_none() {
-            self.create_webgl_texture(gl);
+            let webgl_texture = self.create_webgl_texture(gl)?;
+            self.webgl_texture = Some(webgl_texture);
         }
 
-        self.webgl_texture.as_ref().unwrap()
+        Ok(self.webgl_texture.as_ref().unwrap())
     }
 
-    fn create_webgl_texture(&self, gl: &WebGl2RenderingContext) -> WebGlTexture {
-        let webgl_texture = gl.create_texture().unwrap();
+    fn create_webgl_texture(&self, gl: &WebGl2RenderingContext) -> Result<WebGlTexture, TextureError> {
+        let Some(webgl_texture) = gl.create_texture() else {
+            return Err(TextureError::CreationFailed);
+        };
+
         gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&webgl_texture));
 
         match &self.texture_data {
@@ -110,7 +120,7 @@ impl Texture {
                     self.data_type as u32,
                     source,
                 )
-                .unwrap();
+                .map_err(|_| TextureError::DataUploadFailed)?;
             }
             TextureData::ImagePixelData(data) => {
                 gl.tex_image_2d_with_i32_and_i32_and_i32_and_format_and_type_and_opt_u8_array(
@@ -124,7 +134,7 @@ impl Texture {
                     self.data_type as u32,
                     Some(&data.bytes),
                 )
-                .unwrap();
+                .map_err(|_| TextureError::DataUploadFailed)?;
             }
         }
 
@@ -140,7 +150,7 @@ impl Texture {
             self.magnification_filter as i32,
         );
 
-        webgl_texture
+        Ok(webgl_texture)
     }
 }
 

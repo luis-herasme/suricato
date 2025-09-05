@@ -46,11 +46,11 @@ impl Material {
 
         // Set uniforms
         let mut current_texture_unit = 0;
-        for (name, uniform) in &self.uniforms {
+        for (name, uniform) in &mut self.uniforms {
             material_resource.set_uniform(&name, &uniform, current_texture_unit);
 
             if let Uniform::Texture(texture) = uniform {
-                let webgl_texture = texture.get_or_create_webgl_texture(gl);
+                let webgl_texture = texture.get_or_create_webgl_texture(gl).unwrap();
                 gl.bind_texture(GL::TEXTURE_2D, Some(webgl_texture));
                 current_texture_unit = current_texture_unit + 1;
             }
