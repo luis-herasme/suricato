@@ -267,3 +267,9 @@ impl MaterialResource {
         self.gl.uniform_block_binding(&self.program, *block_location, ubo_binding_point);
     }
 }
+
+impl Drop for MaterialResource {
+    fn drop(&mut self) {
+        self.gl.delete_program(Some(&self.program));
+    }
+}
