@@ -16,6 +16,32 @@ pub struct Geometry {
     pub interleaved_vertex_buffers: Vec<InterleavedVertexBuffer>,
 }
 
+static QUAD_POSITIONS: [[f32; 2]; 4] = [
+    [0.5, 0.5],   // Top right
+    [0.5, -0.5],  // Bottom right
+    [-0.5, -0.5], // Bottom left
+    [-0.5, 0.5],  // Top left
+];
+
+static QUAD_COLORS: [[u8; 3]; 4] = [
+    [255, 0, 0], // Top right
+    [0, 255, 0], // Bottom right
+    [0, 0, 255], // Bottom left
+    [0, 255, 0], // Top left
+];
+
+static QUAD_UVS: [[f32; 2]; 4] = [
+    [1.0, 1.0], // Top right
+    [1.0, 0.0], // Bottom right
+    [0.0, 0.0], // Bottom left
+    [0.0, 1.0], // Top left
+];
+
+static QUAD_INDICES: [u8; 6] = [
+    0, 1, 2, // Triangle #1
+    2, 3, 0, // Triangle #2
+];
+
 impl Geometry {
     pub fn get_vertex_buffer(&mut self, name: &str) -> Option<&mut VertexBuffer> {
         for vertex_buffer in &mut self.vertex_buffers {
@@ -92,43 +118,34 @@ impl Geometry {
         )?))
     }
 
-    pub fn quad(gl: &GL) -> Result<Geometry, BufferError> {
-        let quad_data: Vec<[f32; 2]> = vec![
-            [0.5, 0.5],   // Top right
-            [0.5, -0.5],  // Bottom right
-            [-0.5, -0.5], // Bottom left
-            [-0.5, 0.5],  // Top left
-        ];
-
+    fn quad_data() -> (VertexData, VertexData, VertexData) {
         let position = VertexData {
             name:      String::from("position"),
-            data:      Data::Vec2(quad_data),
+            data:      Data::Vec2(Vec::from(QUAD_POSITIONS)),
             normalize: false,
             divisor:   0,
         };
 
-        let color_data: Vec<[u8; 3]> = vec![
-            [255, 0, 0], // Top right
-            [0, 255, 0], // Bottom right
-            [0, 0, 255], // Bottom left
-            [0, 255, 0], // Top left
-        ];
-
         let color = VertexData {
             name:      String::from("color"),
-            data:      Data::UnsignedByteVec3(color_data),
+            data:      Data::UnsignedByteVec3(Vec::from(QUAD_COLORS)),
             normalize: true,
             divisor:   0,
         };
 
-        let indices = IndexBuffer::from_u8(
-            gl.clone(),
-            BufferUsage::StaticDraw,
-            vec![
-                0, 1, 2, // Triangle #1
-                2, 3, 0, // Triangle #2
-            ],
-        )?;
+        let uvs = VertexData {
+            name:      String::from("uv"),
+            data:      Data::Vec2(Vec::from(QUAD_UVS)),
+            normalize: false,
+            divisor:   0,
+        };
+
+        (position, color, uvs)
+    }
+
+    pub fn quad(gl: &GL) -> Result<Geometry, BufferError> {
+        let (position, color, uvs) = Geometry::quad_data();
+        let indices = IndexBuffer::from_u8(gl.clone(), BufferUsage::StaticDraw, Vec::from(QUAD_INDICES))?;
 
         Ok(Geometry {
             vertex_count:               4,
@@ -137,39 +154,14 @@ impl Geometry {
             vertex_buffers:             vec![
                 VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, position)?,
                 VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, color)?,
+                VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, uvs)?,
             ],
             interleaved_vertex_buffers: vec![],
         })
     }
 
     pub fn quad_interleaved(gl: &GL) -> Result<Geometry, BufferError> {
-        let quad_data: Vec<[f32; 2]> = vec![
-            [0.5, 0.5],   // Top right
-            [0.5, -0.5],  // Bottom right
-            [-0.5, -0.5], // Bottom left
-            [-0.5, 0.5],  // Top left
-        ];
-
-        let position = VertexData {
-            name:      String::from("position"),
-            data:      Data::Vec2(quad_data),
-            normalize: false,
-            divisor:   0,
-        };
-
-        let color_data: Vec<[u8; 3]> = vec![
-            [255, 0, 0], // Top right
-            [0, 255, 0], // Bottom right
-            [0, 0, 255], // Bottom left
-            [0, 255, 0], // Top left
-        ];
-
-        let color = VertexData {
-            name:      String::from("color"),
-            data:      Data::UnsignedByteVec3(color_data),
-            normalize: true,
-            divisor:   0,
-        };
+        let (position, color, uvs) = Geometry::quad_data();
 
         let indices = IndexBuffer::from_u8(
             gl.clone(),
@@ -188,7 +180,7 @@ impl Geometry {
             interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(
                 gl.clone(),
                 BufferUsage::StaticDraw,
-                vec![position, color],
+                vec![position, color, uvs],
             )?],
         })
     }
@@ -213,33 +205,7 @@ impl Geometry {
         )?;
 
         // Model buffer
-        let quad_data: Vec<[f32; 2]> = vec![
-            [0.5, 0.5],   // Top right
-            [0.5, -0.5],  // Bottom right
-            [-0.5, -0.5], // Bottom left
-            [-0.5, 0.5],  // Top left
-        ];
-
-        let position = VertexData {
-            name:      String::from("position"),
-            data:      Data::Vec2(quad_data),
-            normalize: false,
-            divisor:   0,
-        };
-
-        let color_data: Vec<[u8; 3]> = vec![
-            [255, 0, 0], // Top right
-            [0, 255, 0], // Bottom right
-            [0, 0, 255], // Bottom left
-            [0, 255, 0], // Top left
-        ];
-
-        let color = VertexData {
-            name:      String::from("color"),
-            data:      Data::UnsignedByteVec3(color_data),
-            normalize: true,
-            divisor:   0,
-        };
+        let (position, color, uvs) = Geometry::quad_data();
 
         let indices = IndexBuffer::from_u8(
             gl.clone(),
@@ -257,7 +223,7 @@ impl Geometry {
             interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(
                 gl.clone(),
                 BufferUsage::StaticDraw,
-                vec![position, color],
+                vec![position, color, uvs],
             )?],
             vertex_buffers:             vec![transform_buffer],
         })
@@ -279,51 +245,11 @@ impl Geometry {
         };
 
         // Model buffer
-        let quad_data: Vec<[f32; 2]> = vec![
-            [0.5, 0.5],   // Top right
-            [0.5, -0.5],  // Bottom right
-            [-0.5, -0.5], // Bottom left
-            [-0.5, 0.5],  // Top left
-        ];
-
-        let position = VertexData {
-            name:      String::from("position"),
-            data:      Data::Vec2(quad_data),
-            normalize: false,
-            divisor:   0,
-        };
-
-        let color_data: Vec<[u8; 3]> = vec![
-            [255, 0, 0], // Top right
-            [0, 255, 0], // Bottom right
-            [0, 0, 255], // Bottom left
-            [0, 255, 0], // Top left
-        ];
-
-        let color = VertexData {
-            name:      String::from("color"),
-            data:      Data::UnsignedByteVec3(color_data),
-            normalize: true,
-            divisor:   0,
-        };
-
-        let texture_coordinates_data: Vec<[f32; 2]> = vec![
-            [1.0, 1.0], // Top right
-            [1.0, 0.0], // Bottom right
-            [0.0, 0.0], // Bottom left
-            [0.0, 1.0], // Top left
-        ];
-
-        let texture_coordinate = VertexData {
-            name:      String::from("texture_coordinate"),
-            data:      Data::Vec2(texture_coordinates_data),
-            normalize: true,
-            divisor:   0,
-        };
+        let (position, color, uvs) = Geometry::quad_data();
 
         let color = VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, color)?;
         let position = VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, position)?;
-        let texture_coordinate = VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, texture_coordinate)?;
+        let uvs = VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, uvs)?;
         let per_instance_transforms = VertexBuffer::new(gl.clone(), BufferUsage::DynamicDraw, per_instance_transforms)?;
 
         let indices = IndexBuffer::from_u8(
@@ -340,7 +266,7 @@ impl Geometry {
             indices:                    Some(indices),
             instance_count:             Some(count),
             interleaved_vertex_buffers: vec![],
-            vertex_buffers:             vec![color, position, texture_coordinate, per_instance_transforms],
+            vertex_buffers:             vec![color, position, uvs, per_instance_transforms],
         })
     }
 }
