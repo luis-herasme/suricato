@@ -1,13 +1,10 @@
+use web_sys::wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext as GL};
-use web_sys::{HtmlImageElement, wasm_bindgen::JsCast};
 
 use crate::{
     buffer_gpu::BufferError,
-    geometry::Geometry,
-    material::{Material, MaterialError},
+    material::MaterialError,
     mesh::{Mesh, MeshError},
-    obj_parser::OBJ,
-    texture::{Texture, TextureData, TextureError},
     ubo::UniformBufferObject,
 };
 
@@ -116,25 +113,5 @@ impl Renderer {
 
     pub fn get_ubo(&mut self, ubo_binding_point: usize) -> &UniformBufferObject {
         &self.uniform_buffer_objects[ubo_binding_point]
-    }
-
-    /// MATERIAL
-    pub fn create_material(&self, vertex_shader_source: &str, fragment_shader_source: &str) -> Result<Material, MaterialError> {
-        Material::new(self.gl.clone(), vertex_shader_source, fragment_shader_source)
-    }
-
-    /// TEXTURES
-    pub fn create_texture_from_html_image(&self, html_image: HtmlImageElement) -> Result<Texture, TextureError> {
-        Texture::new(&self.gl, TextureData::HtmlImageElement(html_image))
-    }
-
-    /// MESH
-    pub fn create_mesh(&self, geometry: Geometry, material: Material) -> Result<Mesh, MeshError> {
-        Mesh::new(&self.gl, geometry, material)
-    }
-
-    /// GEOMETRY
-    pub fn create_geometry_from_ojb(&self, obj: OBJ) -> Result<Geometry, BufferError> {
-        Geometry::from_obj(self.gl.clone(), obj)
     }
 }

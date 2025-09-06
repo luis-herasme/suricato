@@ -26,34 +26,34 @@ pub struct Material {
 }
 
 impl Material {
-    pub fn new(gl: GL, vertex_shader_source: &str, fragment_shader_source: &str) -> Result<Material, MaterialError> {
-        let webgl_program = gl.create_program().ok_or_else(|| MaterialError::ProgramCreationFailed)?;
+    pub fn new(gl: &GL, vertex_shader_source: &str, fragment_shader_source: &str) -> Result<Material, MaterialError> {
+        let program = gl.create_program().ok_or_else(|| MaterialError::ProgramCreationFailed)?;
 
         let vertex_shader = Material::compile_shader(&gl, vertex_shader_source, GL::VERTEX_SHADER)?;
         let fragment_shader = Material::compile_shader(&gl, fragment_shader_source, GL::FRAGMENT_SHADER)?;
 
-        gl.attach_shader(&webgl_program, &vertex_shader);
-        gl.attach_shader(&webgl_program, &fragment_shader);
-        gl.link_program(&webgl_program);
+        gl.attach_shader(&program, &vertex_shader);
+        gl.attach_shader(&program, &fragment_shader);
+        gl.link_program(&program);
 
-        let program_link_status_is_ok = gl.get_program_parameter(&webgl_program, GL::LINK_STATUS).as_bool().unwrap_or(false);
+        let program_link_status_is_ok = gl.get_program_parameter(&program, GL::LINK_STATUS).as_bool().unwrap_or(false);
 
-        if program_link_status_is_ok {
-            let uniform_locations = Material::get_uniform_locations(&gl, &webgl_program);
-            let attribute_locations = Material::get_attribute_locations(&gl, &webgl_program);
-            let uniform_block_locations = Material::get_uniform_block_locations(&gl, &webgl_program);
-
-            Ok(Material {
-                uniforms: HashMap::new(),
-                gl: gl.clone(),
-                program: webgl_program,
-                uniform_locations,
-                attribute_locations,
-                uniform_block_locations,
-            })
-        } else {
-            Err(MaterialError::ProgramLinkingFailed(gl.get_program_info_log(&webgl_program)))
+        if !program_link_status_is_ok {
+            return Err(MaterialError::ProgramLinkingFailed(gl.get_program_info_log(&program)));
         }
+
+        let uniform_locations = Material::get_uniform_locations(&gl, &program);
+        let attribute_locations = Material::get_attribute_locations(&gl, &program);
+        let uniform_block_locations = Material::get_uniform_block_locations(&gl, &program);
+
+        Ok(Material {
+            gl: gl.clone(),
+            program,
+            uniform_locations,
+            attribute_locations,
+            uniform_block_locations,
+            uniforms: HashMap::new(),
+        })
     }
 
     pub fn set_uniform(&mut self, uniform_name: &str, uniform: Uniform) {
@@ -61,7 +61,7 @@ impl Material {
     }
 
     pub fn on_before_render(&mut self, gl: &GL) {
-        self.use_program();
+        self.gl.use_program(Some(&self.program));
 
         // Set uniforms
         let mut current_texture_unit = 0;
@@ -74,17 +74,6 @@ impl Material {
             }
         }
     }
-    // }
-
-    // pub struct MaterialResource {
-    //     gl:                      GL,
-    //     program:                 WebGlProgram,
-    //     uniform_locations:       HashMap<String, WebGlUniformLocation>,
-    //     attribute_locations:     HashMap<String, u32>,
-    //     uniform_block_locations: HashMap<String, u32>,
-    // }
-
-    // impl MaterialResource {
 
     fn compile_shader(gl: &GL, shader_source: &str, shader_type: u32) -> Result<WebGlShader, MaterialError> {
         let shader = gl.create_shader(shader_type).ok_or_else(|| MaterialError::ShaderCreationFailed)?;
@@ -97,10 +86,6 @@ impl Material {
         } else {
             Err(MaterialError::ShaderCompilationFailed(gl.get_shader_info_log(&shader)))
         }
-    }
-
-    pub fn use_program(&self) {
-        self.gl.use_program(Some(&self.program));
     }
 
     /// UNIFORMS

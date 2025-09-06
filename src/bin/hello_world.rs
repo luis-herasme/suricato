@@ -134,122 +134,79 @@
 //         .unwrap();
 // }
 
-use glam::Quat;
-use suricato::{
-    obj_parser::OBJ,
-    renderer::Renderer,
-    transform::Transform3D,
-    uniforms::Uniform,
-    utils::{fetch_image, fetch_text, request_animation_frame},
-};
-use wasm_bindgen_futures::spawn_local;
+// use glam::Quat;
+// use suricato::{
+//     obj_parser::OBJ,
+//     renderer::Renderer,
+//     transform::Transform3D,
+//     uniforms::Uniform,
+//     utils::{fetch_image, fetch_text, request_animation_frame},
+// };
+// use wasm_bindgen_futures::spawn_local;
 
-fn main() {
-    console_error_panic_hook::set_once();
-    spawn_local(main_async());
-}
+// fn main() {
+//     console_error_panic_hook::set_once();
+//     spawn_local(main_async());
+// }
 
-async fn main_async() {
-    console_error_panic_hook::set_once();
+// async fn main_async() {
+//     console_error_panic_hook::set_once();
 
-    let vertex_shader_source = r#"#version 300 es
-in vec3 position;
-in vec3 normal;
-in vec2 uv;
+//     let vertex_shader_source = r#"#version 300 es
+// in vec3 position;
+// in vec3 normal;
+// in vec2 uv;
 
-out vec3 v_normal;
-out vec2 v_texture_coordinate;
+// out vec3 v_normal;
+// out vec2 v_texture_coordinate;
 
-uniform mat4 transform;
+// uniform mat4 transform;
 
-void main() {
-    v_normal = (transform * vec4(normal, 0.0)).xyz;
-    v_texture_coordinate = uv;
-    gl_Position = transform * vec4(position, 1.0);
-}
-"#;
-    let fragment_shader_source = r#"#version 300 es
-precision mediump float;
+// void main() {
+//     v_normal = (transform * vec4(normal, 0.0)).xyz;
+//     v_texture_coordinate = uv;
+//     gl_Position = transform * vec4(position, 1.0);
+// }
+// "#;
+//     let fragment_shader_source = r#"#version 300 es
+// precision mediump float;
 
-in vec3 v_normal;
-in vec2 v_texture_coordinate;
+// in vec3 v_normal;
+// in vec2 v_texture_coordinate;
 
-out vec4 fragment_color;
-uniform sampler2D chair_texture;
+// out vec4 fragment_color;
+// uniform sampler2D chair_texture;
 
-void main() {
-    vec3 normal = normalize(v_normal);
-    float light = dot(normal, normalize(vec3(0.25, 25.0, -25.0)));
-    fragment_color = texture(chair_texture, v_texture_coordinate);
-    fragment_color.rgb *= max(0.2, light);
-}
-"#;
+// void main() {
+//     vec3 normal = normalize(v_normal);
+//     float light = dot(normal, normalize(vec3(0.25, 25.0, -25.0)));
+//     fragment_color = texture(chair_texture, v_texture_coordinate);
+//     fragment_color.rgb *= max(0.2, light);
+// }
+// "#;
 
-    let obj_data = fetch_text("./chair.obj").await.unwrap();
-    let obj = OBJ::try_from(obj_data).unwrap();
+//     let obj_data = fetch_text("./chair.obj").await.unwrap();
+//     let obj = OBJ::try_from(obj_data).unwrap();
 
-    let mut renderer = Renderer::new();
-    let material = renderer.create_material(vertex_shader_source, fragment_shader_source).unwrap();
-    let geometry = renderer.create_geometry_from_ojb(obj).unwrap();
-    let mut mesh = renderer.create_mesh(geometry, material).unwrap();
+//     let mut renderer = Renderer::new();
+//     let material = renderer.create_material(vertex_shader_source, fragment_shader_source).unwrap();
+//     let geometry = renderer.create_geometry_from_ojb(obj).unwrap();
+//     let mut mesh = renderer.create_mesh(geometry, material).unwrap();
 
-    let html_image = fetch_image("./chair.png").await.unwrap();
-    let texture = renderer.create_texture_from_html_image(html_image).unwrap();
-    mesh.material.set_uniform("chair_texture", Uniform::Texture(texture));
+//     let html_image = fetch_image("./chair.png").await.unwrap();
+//     let texture = renderer.create_texture_from_html_image(html_image).unwrap();
+//     mesh.material.set_uniform("chair_texture", Uniform::Texture(texture));
 
-    let mut transform = Transform3D::new();
-    transform.scale *= 0.005;
+//     let mut transform = Transform3D::new();
+//     transform.scale *= 0.005;
 
-    request_animation_frame(Box::new(move || {
-        renderer.clear();
-        transform.rotation *= Quat::from_rotation_x(0.01);
-        transform.rotation *= Quat::from_rotation_y(0.02);
-        mesh.material.set_uniform("transform", Uniform::Mat4(transform.to_array()));
-        renderer.render(&mut mesh);
-    }));
-}
-
-// This function is automatically invoked after the Wasm module is instantiated.
-// fn run() -> Result<(), JsValue> {
-//     // Here we want to call `requestAnimationFrame` in a loop, but only a fixed
-//     // number of times. After it's done we want all our resources cleaned up. To
-//     // achieve this we're using an `Rc`. The `Rc` will eventually store the
-//     // closure we want to execute on each frame, but to start out it contains
-//     // `None`.
-//     //
-//     // After the `Rc` is made we'll actually create the closure, and the closure
-//     // will reference one of the `Rc` instances. The other `Rc` reference is
-//     // used to store the closure, request the first frame, and then is dropped
-//     // by this function.
-//     //
-//     // Inside the closure we've got a persistent `Rc` reference, which we use
-//     // for all future iterations of the loop
-//     let f = Rc::new(RefCell::new(None));
-//     let g = f.clone();
-
-//     let mut i = 0;
-//     *g.borrow_mut() = Some(Closure::new(move || {
-//         if i > 300 {
-//             body().set_text_content(Some("All done!"));
-
-//             // Drop our handle to this closure so that it will get cleaned
-//             // up once we return.
-//             let _ = f.borrow_mut().take();
-//             return;
-//         }
-
-//         // Set the body's text content to how many times this
-//         // requestAnimationFrame callback has fired.
-//         i += 1;
-//         let text = format!("requestAnimationFrame has been called {} times.", i);
-//         body().set_text_content(Some(&text));
-
-//         // Schedule ourself for another requestAnimationFrame callback.
-//         request_animation_frame(f.borrow().as_ref().unwrap());
+//     request_animation_frame(Box::new(move || {
+//         renderer.clear();
+//         transform.rotation *= Quat::from_rotation_x(0.01);
+//         transform.rotation *= Quat::from_rotation_y(0.02);
+//         mesh.material.set_uniform("transform", Uniform::Mat4(transform.to_array()));
+//         renderer.render(&mut mesh);
 //     }));
-
-//     request_animation_frame(g.borrow().as_ref().unwrap());
-//     Ok(())
 // }
 
 // use suricato::{geometry::Geometry, material::Material, mesh::Mesh, renderer::App, uniforms::Uniform, utils::to_bytes};
@@ -585,69 +542,35 @@ void main() {
 //     fps_loop.forget();
 // }
 
-// use glam::Quat;
-// use suricato::{geometry::Geometry, material::Material, renderer::Renderer, transform::Transform, uniforms::Uniform};
-// use wasm_bindgen::{JsCast, prelude::Closure};
+use suricato::{geometry::Geometry, material::Material, mesh::Mesh, renderer::Renderer, utils::request_animation_frame};
 
-// fn main() {
-//     console_error_panic_hook::set_once();
+const VERTEX_SHADER_SOURCE: &'static str = r#"#version 300 es
+in vec3 position;
 
-//     let vertex_shader_source = r#"#version 300 es
-// in vec2 position;
-// in vec3 color;
+void main() {
+    gl_Position = vec4(position, 1.0);
+}
+"#;
 
-// uniform mat4 transform;
-// out vec3 v_color;
+const FRAGMENT_SHADER_SOURCE: &'static str = r#"#version 300 es
+precision mediump float;
 
-// void main() {
-//     v_color = color;
-//     gl_Position = transform * vec4(position, 0.0, 1.0);
-// }
-// "#;
-//     let fragment_shader_source = r#"#version 300 es
-// precision mediump float;
+out vec4 fragment_color;
 
-// // uniform vec4 color;
-// out vec4 fragment_color;
-// in vec3 v_color;
+void main() {
+    fragment_color = vec4(1.0, 0.0, 0.0, 1.0);
+}
+"#;
 
-// void main() {
-//     fragment_color = vec4(v_color, 1.0);
-// }
-// "#;
+fn main() {
+    let mut renderer = Renderer::new();
 
-//     let mut material = Material::new(vertex_shader_source, fragment_shader_source);
+    let material = Material::new(&renderer.gl, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE).unwrap();
+    let geometry = Geometry::quad(&renderer.gl).unwrap();
+    let mut mesh = Mesh::new(&renderer.gl, geometry, material).unwrap();
 
-//     let mut renderer = Renderer::new();
-
-//     let mut transform1 = Transform::new();
-//     transform1.scale *= 0.2;
-//     let rotation1 = Quat::from_rotation_z(0.01);
-
-//     let mut transform2 = Transform::new();
-//     transform2.scale *= 0.2;
-//     let rotation2 = Quat::from_rotation_z(0.02);
-
-//     let mut geometry = Geometry::quad();
-//     let mut t = 0.1;
-
-//     let callback = Closure::wrap(Box::new(move || {
-//         t += 0.01;
-//         geometry.set_vertex_at_f32("position", 0, f32::sin(t));
-
-//         renderer.clear();
-//         transform1.rotation = transform1.rotation.mul_quat(rotation1);
-//         material.set_uniform("transform", Uniform::Mat4(transform1.to_array()));
-//         renderer.render(&mut material, &mut geometry);
-//         transform2.rotation = transform2.rotation.mul_quat(rotation2);
-//         material.set_uniform("transform", Uniform::Mat4(transform2.to_array()));
-//         renderer.render(&mut material, &mut geometry);
-//     }) as Box<dyn FnMut()>);
-
-//     web_sys::window()
-//         .unwrap()
-//         .set_interval_with_callback_and_timeout_and_arguments_0(callback.as_ref().unchecked_ref(), 1)
-//         .unwrap();
-
-//     callback.forget();
-// }
+    request_animation_frame(Box::new(move || {
+        renderer.clear();
+        renderer.render(&mut mesh);
+    }));
+}

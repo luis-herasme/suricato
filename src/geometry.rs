@@ -45,7 +45,7 @@ impl Geometry {
         None
     }
 
-    pub fn from_obj(gl: GL, obj: OBJ) -> Result<Geometry, BufferError> {
+    pub fn from_obj(gl: &GL, obj: OBJ) -> Result<Geometry, BufferError> {
         let mut positions: Vec<[f32; 3]> = Vec::new();
         let mut normals: Vec<[f32; 3]> = Vec::new();
         let mut uvs: Vec<[f32; 2]> = Vec::new();
@@ -86,13 +86,13 @@ impl Geometry {
         };
 
         Ok(Geometry::from(InterleavedVertexBuffer::new(
-            gl,
+            gl.clone(),
             BufferUsage::StaticDraw,
             vec![positions, normals, uvs],
         )?))
     }
 
-    pub fn quad(gl: GL) -> Result<Geometry, BufferError> {
+    pub fn quad(gl: &GL) -> Result<Geometry, BufferError> {
         let quad_data: Vec<[f32; 2]> = vec![
             [0.5, 0.5],   // Top right
             [0.5, -0.5],  // Bottom right
@@ -142,7 +142,7 @@ impl Geometry {
         })
     }
 
-    pub fn quad_interleaved(gl: GL) -> Result<Geometry, BufferError> {
+    pub fn quad_interleaved(gl: &GL) -> Result<Geometry, BufferError> {
         let quad_data: Vec<[f32; 2]> = vec![
             [0.5, 0.5],   // Top right
             [0.5, -0.5],  // Bottom right
@@ -193,7 +193,7 @@ impl Geometry {
         })
     }
 
-    pub fn quad_instanced_and_interleaved(gl: GL, count: usize) -> Result<Geometry, BufferError> {
+    pub fn quad_instanced_and_interleaved(gl: &GL, count: usize) -> Result<Geometry, BufferError> {
         // Instance buffer
         let mut trasnforms = Vec::with_capacity(count);
 
@@ -263,7 +263,7 @@ impl Geometry {
         })
     }
 
-    pub fn quad_instanced(gl: GL, count: usize) -> Result<Geometry, BufferError> {
+    pub fn quad_instanced(gl: &GL, count: usize) -> Result<Geometry, BufferError> {
         // Instance buffer
         let mut trasnforms = Vec::with_capacity(count);
 
