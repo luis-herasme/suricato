@@ -32,6 +32,7 @@ pub async fn fetch_image(url: &str) -> Result<HtmlImageElement, JsValue> {
 
     let image = HtmlImageElement::new()?;
     image.set_src(&url);
+    JsFuture::from(image.decode()).await?;
 
     Ok(image)
 }
@@ -75,16 +76,16 @@ pub fn js_array_to_vec_u32(array: JsValue) -> Vec<u32> {
 #[macro_export]
 macro_rules! log {
     ($($arg:tt)*) => {
-        console::log_1(&(std::fmt::format(format_args!($($arg)*))).into());
+        web_sys::console::log_1(&(std::fmt::format(format_args!($($arg)*))).into());
     }
 }
 
-fn request_animation_frame(fun: Box<dyn FnMut() -> ()>) {
+pub fn request_animation_frame(mut fun: Box<dyn FnMut() -> ()>) {
     let main_loop = Rc::new(RefCell::new(None));
     let main_loop_clone = main_loop.clone();
 
     *main_loop_clone.borrow_mut() = Some(Closure::new(move || {
-        fun.as_ref();
+        fun.as_mut()();
         request_animation_frame_internal(main_loop.borrow().as_ref().unwrap());
     }));
 
