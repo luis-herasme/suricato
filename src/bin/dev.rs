@@ -120,7 +120,7 @@ void main() {
         transform.rotation *= Quat::from_rotation_x(0.0003);
         transform.rotation *= Quat::from_rotation_y(0.002);
         mesh.material.set_uniform("transform", Uniform::Mat4(transform.to_array()));
-        app.render(&mut mesh);
+        app.render(&mut mesh).unwrap();
         request_animation_frame(main_loop.borrow().as_ref().unwrap());
     }));
 

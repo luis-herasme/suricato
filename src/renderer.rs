@@ -1,7 +1,30 @@
 use web_sys::wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext as GL};
 
-use crate::{buffer_gpu::BufferGPU, mesh::Mesh, ubo::UniformBufferObject};
+use crate::{
+    buffer_gpu::{BufferError, BufferGPU},
+    material::MaterialError,
+    mesh::Mesh,
+    ubo::UniformBufferObject,
+};
+
+#[derive(Debug)]
+pub enum RenderError {
+    BufferError(BufferError),
+    MaterialError(MaterialError),
+}
+
+impl From<BufferError> for RenderError {
+    fn from(value: BufferError) -> Self {
+        RenderError::BufferError(value)
+    }
+}
+
+impl From<MaterialError> for RenderError {
+    fn from(value: MaterialError) -> Self {
+        RenderError::MaterialError(value)
+    }
+}
 
 pub struct App {
     pub gl:                 GL,
@@ -33,26 +56,26 @@ impl App {
         self.gl.clear(GL::COLOR_BUFFER_BIT | GL::DEPTH_BUFFER_BIT);
     }
 
-    pub fn render(&mut self, mesh: &mut Mesh) {
+    pub fn render(&mut self, mesh: &mut Mesh) -> Result<(), RenderError> {
         for vertex_buffer in &mut mesh.geometry.vertex_buffers {
-            vertex_buffer.buffer.on_before_render(&self.gl);
+            vertex_buffer.buffer.on_before_render(&self.gl)?;
         }
 
         for interleaved_vertex_buffer in &mut mesh.geometry.interleaved_vertex_buffers {
-            interleaved_vertex_buffer.buffer.on_before_render(&self.gl);
+            interleaved_vertex_buffer.buffer.on_before_render(&self.gl)?;
         }
 
         for uniform_buffer_object in &mut self.uniform_buffer_objects {
-            uniform_buffer_object.buffer.on_before_render(&self.gl);
+            uniform_buffer_object.buffer.on_before_render(&self.gl)?;
         }
 
-        mesh.material.on_before_render(&self.gl);
+        mesh.material.on_before_render(&self.gl)?;
 
         let vao = mesh.get_or_create_vao(&self.gl);
         self.gl.bind_vertex_array(Some(vao));
 
         if let Some(indices) = &mut mesh.geometry.indices {
-            indices.buffer.on_before_render(&self.gl);
+            indices.buffer.on_before_render(&self.gl)?;
             indices.buffer.bind(&self.gl);
 
             if let Some(instance_count) = mesh.geometry.instance_count {
@@ -75,6 +98,8 @@ impl App {
             self.gl
                 .draw_arrays(mesh.render_primitive as u32, 0, mesh.geometry.vertex_count as i32);
         }
+
+        Ok(())
     }
 
     /// UBO
