@@ -4,12 +4,13 @@ use web_sys::{HtmlCanvasElement, WebGl2RenderingContext as GL};
 use crate::{
     buffer_gpu::{BufferError, BufferGPU},
     material::MaterialError,
-    mesh::Mesh,
+    mesh::{Mesh, MeshError},
     ubo::UniformBufferObject,
 };
 
 #[derive(Debug)]
 pub enum RenderError {
+    MeshError(MeshError),
     BufferError(BufferError),
     MaterialError(MaterialError),
 }
@@ -23,6 +24,12 @@ impl From<BufferError> for RenderError {
 impl From<MaterialError> for RenderError {
     fn from(value: MaterialError) -> Self {
         RenderError::MaterialError(value)
+    }
+}
+
+impl From<MeshError> for RenderError {
+    fn from(value: MeshError) -> Self {
+        RenderError::MeshError(value)
     }
 }
 
@@ -71,7 +78,7 @@ impl App {
 
         mesh.material.on_before_render(&self.gl)?;
 
-        let vao = mesh.get_or_create_vao(&self.gl);
+        let vao = mesh.get_or_create_vao(&self.gl)?;
         self.gl.bind_vertex_array(Some(vao));
 
         if let Some(indices) = &mut mesh.geometry.indices {

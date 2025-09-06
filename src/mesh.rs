@@ -15,6 +15,12 @@ pub enum RenderPrimitive {
     Triangles     = GL::TRIANGLES,
 }
 
+#[derive(Debug)]
+pub enum MeshError {
+    VAOCreationFailed,
+    UninitializedMaterial,
+}
+
 pub struct Mesh {
     pub geometry:         Geometry,
     pub material:         Material,
@@ -32,20 +38,26 @@ impl Mesh {
         }
     }
 
-    pub fn get_or_create_vao(&mut self, gl: &GL) -> &WebGlVertexArrayObject {
+    pub fn get_or_create_vao(&mut self, gl: &GL) -> Result<&WebGlVertexArrayObject, MeshError> {
         if self.vao.is_none() {
-            self.vao = Some(self.create_vao(gl));
+            let vao = self.create_vao(gl)?;
+            self.vao = Some(vao);
         }
 
-        self.vao.as_ref().unwrap()
+        Ok(self.vao.as_ref().unwrap())
     }
 
-    fn create_vao(&mut self, gl: &GL) -> WebGlVertexArrayObject {
-        let vao = gl.create_vertex_array().unwrap();
+    fn create_vao(&mut self, gl: &GL) -> Result<WebGlVertexArrayObject, MeshError> {
+        let Some(vao) = gl.create_vertex_array() else {
+            return Err(MeshError::VAOCreationFailed);
+        };
+
         gl.bind_vertex_array(Some(&vao));
 
         // Set attributes
-        let material_resource = self.material.webgl_resources.as_ref().unwrap();
+        let Some(material_resource) = &self.material.webgl_resources else {
+            return Err(MeshError::UninitializedMaterial);
+        };
 
         for vertex_buffer in &self.geometry.vertex_buffers {
             vertex_buffer.buffer.bind(gl);
@@ -60,6 +72,6 @@ impl Mesh {
         }
 
         gl.bind_vertex_array(None);
-        vao
+        Ok(vao)
     }
 }
