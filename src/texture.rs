@@ -1,5 +1,7 @@
 use web_sys::{HtmlImageElement, WebGl2RenderingContext, WebGlTexture};
 
+use crate::renderer::Renderer;
+
 #[repr(u32)]
 #[derive(Copy, Clone, Debug)]
 pub enum MinificationFilter {
@@ -80,8 +82,8 @@ pub struct Texture {
 }
 
 impl Texture {
-    pub fn new(gl: &WebGl2RenderingContext, texture_data: TextureData) -> Result<Texture, TextureError> {
-        let Some(webgl_texture) = gl.create_texture() else {
+    pub fn new(renderer: &Renderer, texture_data: TextureData) -> Result<Texture, TextureError> {
+        let Some(webgl_texture) = renderer.gl.create_texture() else {
             return Err(TextureError::CreationFailed);
         };
 
@@ -97,7 +99,7 @@ impl Texture {
             webgl_texture:        webgl_texture,
         };
 
-        texture.upload_webgl_texture(gl)?;
+        texture.upload_webgl_texture(&renderer.gl)?;
 
         Ok(texture)
     }

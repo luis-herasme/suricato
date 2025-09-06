@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use web_sys::{WebGl2RenderingContext as GL, WebGlProgram, WebGlShader, WebGlUniformLocation};
 
-use crate::{uniforms::Uniform, vertex_buffer::VertexLayout};
+use crate::{renderer::Renderer, uniforms::Uniform, vertex_buffer::VertexLayout};
 
 #[derive(Debug)]
 pub enum MaterialError {
@@ -26,28 +26,32 @@ pub struct Material {
 }
 
 impl Material {
-    pub fn new(gl: &GL, vertex_shader_source: &str, fragment_shader_source: &str) -> Result<Material, MaterialError> {
-        let program = gl.create_program().ok_or_else(|| MaterialError::ProgramCreationFailed)?;
+    pub fn new(renderer: &Renderer, vertex_shader_source: &str, fragment_shader_source: &str) -> Result<Material, MaterialError> {
+        let program = renderer.gl.create_program().ok_or_else(|| MaterialError::ProgramCreationFailed)?;
 
-        let vertex_shader = Material::compile_shader(&gl, vertex_shader_source, GL::VERTEX_SHADER)?;
-        let fragment_shader = Material::compile_shader(&gl, fragment_shader_source, GL::FRAGMENT_SHADER)?;
+        let vertex_shader = Material::compile_shader(&renderer.gl, vertex_shader_source, GL::VERTEX_SHADER)?;
+        let fragment_shader = Material::compile_shader(&renderer.gl, fragment_shader_source, GL::FRAGMENT_SHADER)?;
 
-        gl.attach_shader(&program, &vertex_shader);
-        gl.attach_shader(&program, &fragment_shader);
-        gl.link_program(&program);
+        renderer.gl.attach_shader(&program, &vertex_shader);
+        renderer.gl.attach_shader(&program, &fragment_shader);
+        renderer.gl.link_program(&program);
 
-        let program_link_status_is_ok = gl.get_program_parameter(&program, GL::LINK_STATUS).as_bool().unwrap_or(false);
+        let program_link_status_is_ok = renderer
+            .gl
+            .get_program_parameter(&program, GL::LINK_STATUS)
+            .as_bool()
+            .unwrap_or(false);
 
         if !program_link_status_is_ok {
-            return Err(MaterialError::ProgramLinkingFailed(gl.get_program_info_log(&program)));
+            return Err(MaterialError::ProgramLinkingFailed(renderer.gl.get_program_info_log(&program)));
         }
 
-        let uniform_locations = Material::get_uniform_locations(&gl, &program);
-        let attribute_locations = Material::get_attribute_locations(&gl, &program);
-        let uniform_block_locations = Material::get_uniform_block_locations(&gl, &program);
+        let uniform_locations = Material::get_uniform_locations(&renderer.gl, &program);
+        let attribute_locations = Material::get_attribute_locations(&renderer.gl, &program);
+        let uniform_block_locations = Material::get_uniform_block_locations(&renderer.gl, &program);
 
         Ok(Material {
-            gl: gl.clone(),
+            gl: renderer.gl.clone(),
             program,
             uniform_locations,
             attribute_locations,

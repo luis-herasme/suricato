@@ -56,12 +56,12 @@ async fn main_async() {
     let obj = OBJ::try_from(obj_data).unwrap();
 
     let mut renderer = Renderer::new();
-    let material = Material::new(&renderer.gl, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE).unwrap();
-    let geometry = Geometry::from_obj(&renderer.gl, obj).unwrap();
-    let mut mesh = Mesh::new(&renderer.gl, geometry, material).unwrap();
+    let material = Material::new(&renderer, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE).unwrap();
+    let geometry = Geometry::from_obj(&renderer, obj).unwrap();
+    let mut mesh = Mesh::new(&renderer, geometry, material).unwrap();
 
     let html_image = fetch_image("./chair.png").await.unwrap();
-    let texture = Texture::new(&renderer.gl, TextureData::HtmlImageElement(html_image)).unwrap();
+    let texture = Texture::new(&renderer, TextureData::HtmlImageElement(html_image)).unwrap();
     mesh.material.set_uniform("chair_texture", Uniform::Texture(texture));
 
     let mut transform = Transform3D::new();

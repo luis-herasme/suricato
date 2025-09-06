@@ -21,9 +21,9 @@ void main() {
 fn main() {
     let mut renderer = Renderer::new();
 
-    let material = Material::new(&renderer.gl, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE).unwrap();
-    let geometry = Geometry::quad(&renderer.gl).unwrap();
-    let mut mesh = Mesh::new(&renderer.gl, geometry, material).unwrap();
+    let material = Material::new(&renderer, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE).unwrap();
+    let geometry = Geometry::quad(&renderer).unwrap();
+    let mut mesh = Mesh::new(&renderer, geometry, material).unwrap();
 
     request_animation_frame(Box::new(move || {
         renderer.clear();

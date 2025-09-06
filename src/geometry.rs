@@ -1,9 +1,8 @@
-use web_sys::WebGl2RenderingContext as GL;
-
 use crate::{
     buffer_gpu::{BufferError, BufferUsage},
     index_buffer::IndexBuffer,
     obj_parser::OBJ,
+    renderer::Renderer,
     transform::Transform2D,
     vertex_buffer::{Data, InterleavedVertexBuffer, VertexBuffer, VertexData},
 };
@@ -71,7 +70,7 @@ impl Geometry {
         None
     }
 
-    pub fn from_obj(gl: &GL, obj: OBJ) -> Result<Geometry, BufferError> {
+    pub fn from_obj(renderer: &Renderer, obj: OBJ) -> Result<Geometry, BufferError> {
         let mut positions: Vec<[f32; 3]> = Vec::new();
         let mut normals: Vec<[f32; 3]> = Vec::new();
         let mut uvs: Vec<[f32; 2]> = Vec::new();
@@ -112,7 +111,7 @@ impl Geometry {
         };
 
         Ok(Geometry::from(InterleavedVertexBuffer::new(
-            gl.clone(),
+            renderer.gl.clone(),
             BufferUsage::StaticDraw,
             vec![positions, normals, uvs],
         )?))
@@ -143,28 +142,28 @@ impl Geometry {
         (position, color, uvs)
     }
 
-    pub fn quad(gl: &GL) -> Result<Geometry, BufferError> {
+    pub fn quad(renderer: &Renderer) -> Result<Geometry, BufferError> {
         let (position, color, uvs) = Geometry::quad_data();
-        let indices = IndexBuffer::from_u8(gl.clone(), BufferUsage::StaticDraw, Vec::from(QUAD_INDICES))?;
+        let indices = IndexBuffer::from_u8(renderer.gl.clone(), BufferUsage::StaticDraw, Vec::from(QUAD_INDICES))?;
 
         Ok(Geometry {
             vertex_count:               4,
             instance_count:             None,
             indices:                    Some(indices),
             vertex_buffers:             vec![
-                VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, position)?,
-                VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, color)?,
-                VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, uvs)?,
+                VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, position)?,
+                VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, color)?,
+                VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, uvs)?,
             ],
             interleaved_vertex_buffers: vec![],
         })
     }
 
-    pub fn quad_interleaved(gl: &GL) -> Result<Geometry, BufferError> {
+    pub fn quad_interleaved(renderer: &Renderer) -> Result<Geometry, BufferError> {
         let (position, color, uvs) = Geometry::quad_data();
 
         let indices = IndexBuffer::from_u8(
-            gl.clone(),
+            renderer.gl.clone(),
             BufferUsage::StaticDraw,
             vec![
                 0, 1, 2, // Triangle #1
@@ -178,14 +177,14 @@ impl Geometry {
             indices:                    Some(indices),
             vertex_buffers:             vec![],
             interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(
-                gl.clone(),
+                renderer.gl.clone(),
                 BufferUsage::StaticDraw,
                 vec![position, color, uvs],
             )?],
         })
     }
 
-    pub fn quad_instanced_and_interleaved(gl: &GL, count: usize) -> Result<Geometry, BufferError> {
+    pub fn quad_instanced_and_interleaved(renderer: &Renderer, count: usize) -> Result<Geometry, BufferError> {
         // Instance buffer
         let mut trasnforms = Vec::with_capacity(count);
 
@@ -194,7 +193,7 @@ impl Geometry {
         }
 
         let transform_buffer = VertexBuffer::new(
-            gl.clone(),
+            renderer.gl.clone(),
             BufferUsage::StaticDraw,
             VertexData {
                 name:      String::from("transform"),
@@ -208,7 +207,7 @@ impl Geometry {
         let (position, color, uvs) = Geometry::quad_data();
 
         let indices = IndexBuffer::from_u8(
-            gl.clone(),
+            renderer.gl.clone(),
             BufferUsage::StaticDraw,
             vec![
                 0, 1, 2, // Triangle #1
@@ -221,7 +220,7 @@ impl Geometry {
             indices:                    Some(indices),
             instance_count:             Some(count),
             interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(
-                gl.clone(),
+                renderer.gl.clone(),
                 BufferUsage::StaticDraw,
                 vec![position, color, uvs],
             )?],
@@ -229,7 +228,7 @@ impl Geometry {
         })
     }
 
-    pub fn quad_instanced(gl: &GL, count: usize) -> Result<Geometry, BufferError> {
+    pub fn quad_instanced(renderer: &Renderer, count: usize) -> Result<Geometry, BufferError> {
         // Instance buffer
         let mut trasnforms = Vec::with_capacity(count);
 
@@ -247,13 +246,13 @@ impl Geometry {
         // Model buffer
         let (position, color, uvs) = Geometry::quad_data();
 
-        let color = VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, color)?;
-        let position = VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, position)?;
-        let uvs = VertexBuffer::new(gl.clone(), BufferUsage::StaticDraw, uvs)?;
-        let per_instance_transforms = VertexBuffer::new(gl.clone(), BufferUsage::DynamicDraw, per_instance_transforms)?;
+        let color = VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, color)?;
+        let position = VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, position)?;
+        let uvs = VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, uvs)?;
+        let per_instance_transforms = VertexBuffer::new(renderer.gl.clone(), BufferUsage::DynamicDraw, per_instance_transforms)?;
 
         let indices = IndexBuffer::from_u8(
-            gl.clone(),
+            renderer.gl.clone(),
             BufferUsage::StaticDraw,
             vec![
                 0, 1, 2, // Triangle #1
