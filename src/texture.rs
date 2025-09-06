@@ -76,12 +76,16 @@ pub struct Texture {
     pub format:               TextureFormat,
     pub internal_format:      TextureFormat,
     pub texture_data:         TextureData,
-    pub webgl_texture:        Option<WebGlTexture>,
+    pub webgl_texture:        WebGlTexture,
 }
 
 impl Texture {
-    pub fn new(texture_data: TextureData) -> Texture {
-        Texture {
+    pub fn new(gl: &WebGl2RenderingContext, texture_data: TextureData) -> Result<Texture, TextureError> {
+        let Some(webgl_texture) = gl.create_texture() else {
+            return Err(TextureError::CreationFailed);
+        };
+
+        let texture = Texture {
             minification_filter:  MinificationFilter::Nearest,
             magnification_filter: MagnificationFilter::Nearest,
             wrap_horizontal:      Wrap::Repeat,
@@ -90,25 +94,16 @@ impl Texture {
             format:               TextureFormat::RGBA,
             internal_format:      TextureFormat::RGBA,
             texture_data:         texture_data,
-            webgl_texture:        None,
-        }
-    }
-
-    pub fn get_or_create_webgl_texture(&mut self, gl: &WebGl2RenderingContext) -> Result<&WebGlTexture, TextureError> {
-        if self.webgl_texture.is_none() {
-            let webgl_texture = self.create_webgl_texture(gl)?;
-            self.webgl_texture = Some(webgl_texture);
-        }
-
-        Ok(self.webgl_texture.as_ref().unwrap())
-    }
-
-    fn create_webgl_texture(&self, gl: &WebGl2RenderingContext) -> Result<WebGlTexture, TextureError> {
-        let Some(webgl_texture) = gl.create_texture() else {
-            return Err(TextureError::CreationFailed);
+            webgl_texture:        webgl_texture,
         };
 
-        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&webgl_texture));
+        texture.upload_webgl_texture(gl)?;
+
+        Ok(texture)
+    }
+
+    fn upload_webgl_texture(&self, gl: &WebGl2RenderingContext) -> Result<(), TextureError> {
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&self.webgl_texture));
 
         match &self.texture_data {
             TextureData::HtmlImageElement(source) => {
@@ -150,12 +145,6 @@ impl Texture {
             self.magnification_filter as i32,
         );
 
-        Ok(webgl_texture)
-    }
-}
-
-impl From<HtmlImageElement> for Texture {
-    fn from(html_image: HtmlImageElement) -> Texture {
-        Texture::new(TextureData::HtmlImageElement(html_image))
+        Ok(())
     }
 }

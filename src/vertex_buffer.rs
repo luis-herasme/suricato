@@ -1,6 +1,9 @@
 use web_sys::WebGl2RenderingContext as GL;
 
-use crate::{buffer_gpu::BufferGPU, utils::to_bytes};
+use crate::{
+    buffer_gpu::{BufferError, BufferGPU, BufferKind, BufferUsage},
+    utils::to_bytes,
+};
 
 #[repr(u32)]
 #[derive(Debug, Clone, Copy)]
@@ -40,7 +43,7 @@ pub struct VertexLayout {
 }
 
 impl VertexLayout {
-    fn from_vertex_array(vertex_array: &Vec<VertexData>) -> Vec<VertexLayout> {
+    fn from_vertex_array(vertex_array: &[VertexData]) -> Vec<VertexLayout> {
         let mut vertex_layouts = Vec::with_capacity(vertex_array.len());
 
         let mut max_alignment = 0;
@@ -351,7 +354,7 @@ pub struct VertexBuffer {
 }
 
 impl VertexBuffer {
-    pub fn new(vertex: VertexData) -> VertexBuffer {
+    pub fn new(gl: GL, usage: BufferUsage, vertex: VertexData) -> Result<VertexBuffer, BufferError> {
         let layout = VertexLayout {
             name:              vertex.name.clone(),
             component_count:   vertex.data.component_count(),
@@ -363,15 +366,15 @@ impl VertexBuffer {
             number_of_columns: vertex.data.number_of_columns(),
         };
 
-        VertexBuffer {
-            buffer: BufferGPU::array_buffer(vertex.data.to_bytes().to_vec()),
+        Ok(VertexBuffer {
+            buffer: BufferGPU::new(gl, BufferKind::ArrayBuffer, usage, vertex.data.to_bytes().to_vec())?,
             layout: layout,
-        }
+        })
     }
 
     #[inline]
     pub fn set_vertex<T>(&mut self, vertex_index: usize, value: &[T]) {
-        self.buffer.set(vertex_index * self.layout.stride, value);
+        self.buffer.set_bytes(vertex_index * self.layout.stride, value);
     }
 }
 
@@ -381,16 +384,16 @@ pub struct InterleavedVertexBuffer {
 }
 
 impl InterleavedVertexBuffer {
-    pub fn new(data: Vec<VertexData>) -> InterleavedVertexBuffer {
+    pub fn new(gl: GL, usage: BufferUsage, data: Vec<VertexData>) -> Result<InterleavedVertexBuffer, BufferError> {
         let layouts = VertexLayout::from_vertex_array(&data);
 
         let data: Vec<Data> = data.into_iter().map(|x| x.data).collect();
         let data = InterleavedVertexBuffer::vertex_data_array_to_bytes(&data, &layouts);
 
-        InterleavedVertexBuffer {
-            buffer: BufferGPU::array_buffer(data),
+        Ok(InterleavedVertexBuffer {
+            buffer: BufferGPU::new(gl, BufferKind::ArrayBuffer, usage, data)?,
             layouts,
-        }
+        })
     }
 
     pub fn vertex_count(&self) -> usize {
@@ -405,7 +408,7 @@ impl InterleavedVertexBuffer {
         unreachable!("Vertex buffer cannot be empty");
     }
 
-    fn vertex_data_array_to_bytes(vertex_data_array: &Vec<Data>, layout_array: &Vec<VertexLayout>) -> Vec<u8> {
+    fn vertex_data_array_to_bytes(vertex_data_array: &[Data], layout_array: &[VertexLayout]) -> Vec<u8> {
         let vertex_count = vertex_data_array[0].count();
         let stride = layout_array[0].stride;
 
@@ -441,7 +444,7 @@ impl InterleavedVertexBuffer {
     #[inline]
     pub fn update_vertex<T>(&mut self, name: &str, vertex_index: usize, value: &[T]) -> bool {
         if let Some(byte_offset) = self.get_vertex_byte_offset(name, vertex_index) {
-            self.buffer.set(byte_offset, value);
+            self.buffer.set_bytes(byte_offset, value);
             return true;
         }
 

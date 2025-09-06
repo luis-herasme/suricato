@@ -15,63 +15,9 @@ pub enum MaterialError {
 }
 
 pub struct Material {
-    pub uniforms:           HashMap<String, Uniform>,
-    pub commands:           Vec<(String, u32)>,
-    vertex_shader_source:   String,
-    fragment_shader_source: String,
-    pub webgl_resources:    Option<MaterialResource>,
-}
+    pub uniforms: HashMap<String, Uniform>,
 
-impl Material {
-    pub fn new(vertex_shader_source: &str, fragment_shader_source: &str) -> Material {
-        Material {
-            vertex_shader_source:   String::from(vertex_shader_source),
-            fragment_shader_source: String::from(fragment_shader_source),
-            uniforms:               HashMap::new(),
-            commands:               Vec::new(),
-            webgl_resources:        None,
-        }
-    }
-
-    pub fn set_uniform(&mut self, uniform_name: &str, uniform: Uniform) {
-        self.uniforms.insert(String::from(uniform_name), uniform);
-    }
-
-    pub fn set_uniform_block(&mut self, name: &str, ubo_binding_point: u32) {
-        self.commands.push((name.to_string(), ubo_binding_point));
-    }
-
-    pub fn on_before_render(&mut self, gl: &GL) -> Result<(), MaterialError> {
-        if self.webgl_resources.is_none() {
-            let resource = MaterialResource::new(gl, &self)?;
-            self.webgl_resources = Some(resource);
-        }
-
-        let material_resource = self.webgl_resources.as_ref().unwrap();
-
-        material_resource.use_program();
-
-        for (name, ubo_binding_point) in self.commands.drain(..) {
-            material_resource.set_uniform_block(&name, ubo_binding_point);
-        }
-
-        // Set uniforms
-        let mut current_texture_unit = 0;
-        for (name, uniform) in &mut self.uniforms {
-            material_resource.set_uniform(&name, &uniform, current_texture_unit);
-
-            if let Uniform::Texture(texture) = uniform {
-                let webgl_texture = texture.get_or_create_webgl_texture(gl).unwrap();
-                gl.bind_texture(GL::TEXTURE_2D, Some(webgl_texture));
-                current_texture_unit = current_texture_unit + 1;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-pub struct MaterialResource {
+    // WebGL resouces
     gl:                      GL,
     program:                 WebGlProgram,
     uniform_locations:       HashMap<String, WebGlUniformLocation>,
@@ -79,12 +25,12 @@ pub struct MaterialResource {
     uniform_block_locations: HashMap<String, u32>,
 }
 
-impl MaterialResource {
-    pub fn new(gl: &GL, material: &Material) -> Result<MaterialResource, MaterialError> {
+impl Material {
+    pub fn new(gl: GL, vertex_shader_source: &str, fragment_shader_source: &str) -> Result<Material, MaterialError> {
         let webgl_program = gl.create_program().ok_or_else(|| MaterialError::ProgramCreationFailed)?;
 
-        let vertex_shader = MaterialResource::compile_shader(&gl, &material.vertex_shader_source, GL::VERTEX_SHADER)?;
-        let fragment_shader = MaterialResource::compile_shader(&gl, &material.fragment_shader_source, GL::FRAGMENT_SHADER)?;
+        let vertex_shader = Material::compile_shader(&gl, vertex_shader_source, GL::VERTEX_SHADER)?;
+        let fragment_shader = Material::compile_shader(&gl, fragment_shader_source, GL::FRAGMENT_SHADER)?;
 
         gl.attach_shader(&webgl_program, &vertex_shader);
         gl.attach_shader(&webgl_program, &fragment_shader);
@@ -93,11 +39,12 @@ impl MaterialResource {
         let program_link_status_is_ok = gl.get_program_parameter(&webgl_program, GL::LINK_STATUS).as_bool().unwrap_or(false);
 
         if program_link_status_is_ok {
-            let uniform_locations = MaterialResource::get_uniform_locations(&gl, &webgl_program);
-            let attribute_locations = MaterialResource::get_attribute_locations(&gl, &webgl_program);
-            let uniform_block_locations = MaterialResource::get_uniform_block_locations(gl, &webgl_program);
+            let uniform_locations = Material::get_uniform_locations(&gl, &webgl_program);
+            let attribute_locations = Material::get_attribute_locations(&gl, &webgl_program);
+            let uniform_block_locations = Material::get_uniform_block_locations(&gl, &webgl_program);
 
-            Ok(MaterialResource {
+            Ok(Material {
+                uniforms: HashMap::new(),
                 gl: gl.clone(),
                 program: webgl_program,
                 uniform_locations,
@@ -108,6 +55,36 @@ impl MaterialResource {
             Err(MaterialError::ProgramLinkingFailed(gl.get_program_info_log(&webgl_program)))
         }
     }
+
+    pub fn set_uniform(&mut self, uniform_name: &str, uniform: Uniform) {
+        self.uniforms.insert(String::from(uniform_name), uniform);
+    }
+
+    pub fn on_before_render(&mut self, gl: &GL) {
+        self.use_program();
+
+        // Set uniforms
+        let mut current_texture_unit = 0;
+        for (name, uniform) in &self.uniforms {
+            self.set_uniform_internal(&name, &uniform, current_texture_unit);
+
+            if let Uniform::Texture(texture) = uniform {
+                gl.bind_texture(GL::TEXTURE_2D, Some(&texture.webgl_texture));
+                current_texture_unit = current_texture_unit + 1;
+            }
+        }
+    }
+    // }
+
+    // pub struct MaterialResource {
+    //     gl:                      GL,
+    //     program:                 WebGlProgram,
+    //     uniform_locations:       HashMap<String, WebGlUniformLocation>,
+    //     attribute_locations:     HashMap<String, u32>,
+    //     uniform_block_locations: HashMap<String, u32>,
+    // }
+
+    // impl MaterialResource {
 
     fn compile_shader(gl: &GL, shader_source: &str, shader_type: u32) -> Result<WebGlShader, MaterialError> {
         let shader = gl.create_shader(shader_type).ok_or_else(|| MaterialError::ShaderCreationFailed)?;
@@ -127,7 +104,7 @@ impl MaterialResource {
     }
 
     /// UNIFORMS
-    pub fn set_uniform(&self, uniform_name: &str, uniform: &Uniform, current_texture_unit: u32) {
+    fn set_uniform_internal(&self, uniform_name: &str, uniform: &Uniform, current_texture_unit: u32) {
         let location = self.uniform_locations.get(uniform_name).unwrap();
 
         match uniform {
@@ -268,7 +245,7 @@ impl MaterialResource {
     }
 }
 
-impl Drop for MaterialResource {
+impl Drop for Material {
     fn drop(&mut self) {
         self.gl.delete_program(Some(&self.program));
     }

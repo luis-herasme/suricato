@@ -25,95 +25,63 @@ pub enum BufferError {
 
 #[derive(Debug, Clone)]
 pub struct BufferGPU {
+    gl:           GL,
     kind:         BufferKind,
-    usage:        BufferUsage,
     buffer_cpu:   Vec<u8>,
-    buffer_gpu:   Option<WebGlBuffer>,
+    buffer_gpu:   WebGlBuffer,
     needs_update: bool,
 }
 
 impl BufferGPU {
-    pub fn array_buffer(data: Vec<u8>) -> BufferGPU {
-        BufferGPU {
-            kind:         BufferKind::ArrayBuffer,
-            usage:        BufferUsage::StaticDraw,
-            buffer_cpu:   data,
-            buffer_gpu:   None,
+    pub fn new(gl: GL, kind: BufferKind, usage: BufferUsage, buffer_cpu: Vec<u8>) -> Result<BufferGPU, BufferError> {
+        let buffer_gpu = BufferGPU::create_buffer_gpu(&gl, kind, usage, &buffer_cpu)?;
+
+        Ok(BufferGPU {
+            gl,
+            kind,
+            buffer_cpu,
+            buffer_gpu,
             needs_update: false,
-        }
+        })
     }
 
-    pub fn uniform_buffer(data: Vec<u8>) -> BufferGPU {
-        BufferGPU {
-            kind:         BufferKind::UniformBuffer,
-            usage:        BufferUsage::DynamicDraw,
-            buffer_cpu:   data,
-            buffer_gpu:   None,
-            needs_update: false,
-        }
-    }
+    fn create_buffer_gpu(gl: &GL, kind: BufferKind, usage: BufferUsage, buffer_cpu: &[u8]) -> Result<WebGlBuffer, BufferError> {
+        let Some(webgl_buffer) = gl.create_buffer() else {
+            return Err(BufferError::CreationFailed);
+        };
 
-    pub fn index_buffer(data: Vec<u8>) -> BufferGPU {
-        BufferGPU {
-            kind:         BufferKind::ElementArrayBuffer,
-            usage:        BufferUsage::StaticDraw,
-            buffer_cpu:   data,
-            buffer_gpu:   None,
-            needs_update: false,
-        }
-    }
-
-    pub fn set_usage(&mut self, usage: BufferUsage) -> Result<(), BufferError> {
-        if self.buffer_gpu.is_some() {
-            return Err(BufferError::UsageChangeAfterCreation);
-        }
-
-        self.usage = usage;
-        Ok(())
+        gl.bind_buffer(kind as u32, Some(&webgl_buffer));
+        gl.buffer_data_with_u8_array(kind as u32, buffer_cpu, usage as u32);
+        Ok(webgl_buffer)
     }
 
     #[inline]
-    pub fn set<T>(&mut self, byte_offset: usize, value: &[T]) {
+    pub fn set_bytes<T>(&mut self, byte_offset: usize, value: &[T]) {
         let bytes = to_bytes(&value);
         self.buffer_cpu[byte_offset..byte_offset + bytes.len()].copy_from_slice(bytes);
         self.needs_update = true;
     }
 
     #[inline(always)]
-    pub fn on_before_render(&mut self, gl: &GL) -> Result<(), BufferError> {
-        if self.buffer_gpu.is_none() {
-            self.create_buffer_gpu(gl)?;
+    pub fn on_before_render(&mut self) {
+        if !self.needs_update {
+            return;
         }
 
-        if self.needs_update {
-            self.update_buffer_gpu(gl);
-            self.needs_update = false;
-        }
-
-        Ok(())
+        self.update_buffer_gpu();
+        self.needs_update = false;
     }
 
-    pub fn bind(&self, gl: &GL) {
-        gl.bind_buffer(self.kind as u32, self.buffer_gpu.as_ref());
+    fn update_buffer_gpu(&self) {
+        self.gl.bind_buffer(self.kind as u32, Some(&self.buffer_gpu));
+        self.gl.buffer_sub_data_with_i32_and_u8_array(self.kind as u32, 0, &self.buffer_cpu);
+    }
+
+    pub fn bind(&self) {
+        self.gl.bind_buffer(self.kind as u32, Some(&self.buffer_gpu));
     }
 
     pub fn size(&self) -> usize {
         self.buffer_cpu.len()
-    }
-
-    fn create_buffer_gpu(&mut self, gl: &GL) -> Result<(), BufferError> {
-        let Some(webgl_buffer) = gl.create_buffer() else {
-            return Err(BufferError::CreationFailed);
-        };
-
-        gl.bind_buffer(self.kind as u32, Some(&webgl_buffer));
-        gl.buffer_data_with_u8_array(self.kind as u32, &self.buffer_cpu, self.usage as u32);
-        self.buffer_gpu = Some(webgl_buffer);
-        Ok(())
-    }
-
-    fn update_buffer_gpu(&self, gl: &GL) {
-        gl.bind_buffer(self.kind as u32, self.buffer_gpu.as_ref());
-        gl.buffer_sub_data_with_i32_and_u8_array(self.kind as u32, 0, &self.buffer_cpu);
     }
 }

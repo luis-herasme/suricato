@@ -1,10 +1,13 @@
-use web_sys::wasm_bindgen::JsCast;
 use web_sys::{HtmlCanvasElement, WebGl2RenderingContext as GL};
+use web_sys::{HtmlImageElement, wasm_bindgen::JsCast};
 
 use crate::{
-    buffer_gpu::{BufferError, BufferGPU},
-    material::MaterialError,
+    buffer_gpu::BufferError,
+    geometry::Geometry,
+    material::{Material, MaterialError},
     mesh::{Mesh, MeshError},
+    obj_parser::OBJ,
+    texture::{Texture, TextureData, TextureError},
     ubo::UniformBufferObject,
 };
 
@@ -33,14 +36,14 @@ impl From<MeshError> for RenderError {
     }
 }
 
-pub struct App {
+pub struct Renderer {
     pub gl:                 GL,
     pub canvas:             HtmlCanvasElement,
     uniform_buffer_objects: Vec<UniformBufferObject>,
 }
 
-impl App {
-    pub fn new() -> App {
+impl Renderer {
+    pub fn new() -> Renderer {
         let document = web_sys::window().unwrap().document().unwrap();
         let canvas = document.create_element("canvas").unwrap().dyn_into::<HtmlCanvasElement>().unwrap();
         document.body().unwrap().append_child(&canvas).unwrap();
@@ -51,7 +54,7 @@ impl App {
 
         gl.enable(GL::DEPTH_TEST);
 
-        App {
+        Renderer {
             gl,
             canvas,
             uniform_buffer_objects: Vec::new(),
@@ -63,27 +66,26 @@ impl App {
         self.gl.clear(GL::COLOR_BUFFER_BIT | GL::DEPTH_BUFFER_BIT);
     }
 
-    pub fn render(&mut self, mesh: &mut Mesh) -> Result<(), RenderError> {
+    pub fn render(&mut self, mesh: &mut Mesh) {
         for vertex_buffer in &mut mesh.geometry.vertex_buffers {
-            vertex_buffer.buffer.on_before_render(&self.gl)?;
+            vertex_buffer.buffer.on_before_render();
         }
 
         for interleaved_vertex_buffer in &mut mesh.geometry.interleaved_vertex_buffers {
-            interleaved_vertex_buffer.buffer.on_before_render(&self.gl)?;
+            interleaved_vertex_buffer.buffer.on_before_render();
         }
 
         for uniform_buffer_object in &mut self.uniform_buffer_objects {
-            uniform_buffer_object.buffer.on_before_render(&self.gl)?;
+            uniform_buffer_object.buffer.on_before_render();
         }
 
-        mesh.material.on_before_render(&self.gl)?;
+        mesh.material.on_before_render(&self.gl);
 
-        let vao = mesh.get_or_create_vao(&self.gl)?;
-        self.gl.bind_vertex_array(Some(vao));
+        self.gl.bind_vertex_array(Some(&mesh.vao));
 
         if let Some(indices) = &mut mesh.geometry.indices {
-            indices.buffer.on_before_render(&self.gl)?;
-            indices.buffer.bind(&self.gl);
+            indices.buffer.on_before_render();
+            indices.buffer.bind();
 
             if let Some(instance_count) = mesh.geometry.instance_count {
                 self.gl.draw_elements_instanced_with_i32(
@@ -105,24 +107,34 @@ impl App {
             self.gl
                 .draw_arrays(mesh.render_primitive as u32, 0, mesh.geometry.vertex_count as i32);
         }
-
-        Ok(())
     }
 
     /// UBO
-    pub fn create_ubo(&mut self, data: Vec<u8>) -> usize {
-        let ubo_binding_point = self.uniform_buffer_objects.len();
-
-        let ubo = UniformBufferObject {
-            binding_point: ubo_binding_point,
-            buffer:        BufferGPU::uniform_buffer(data),
-        };
-
+    pub fn add_ubo(&mut self, ubo: UniformBufferObject) {
         self.uniform_buffer_objects.push(ubo);
-        ubo_binding_point
     }
 
     pub fn get_ubo(&mut self, ubo_binding_point: usize) -> &UniformBufferObject {
         &self.uniform_buffer_objects[ubo_binding_point]
+    }
+
+    /// MATERIAL
+    pub fn create_material(&self, vertex_shader_source: &str, fragment_shader_source: &str) -> Result<Material, MaterialError> {
+        Material::new(self.gl.clone(), vertex_shader_source, fragment_shader_source)
+    }
+
+    /// TEXTURES
+    pub fn create_texture_from_html_image(&self, html_image: HtmlImageElement) -> Result<Texture, TextureError> {
+        Texture::new(&self.gl, TextureData::HtmlImageElement(html_image))
+    }
+
+    /// MESH
+    pub fn create_mesh(&self, geometry: Geometry, material: Material) -> Result<Mesh, MeshError> {
+        Mesh::new(&self.gl, geometry, material)
+    }
+
+    /// GEOMETRY
+    pub fn create_geometry_from_ojb(&self, obj: OBJ) -> Result<Geometry, BufferError> {
+        Geometry::from_obj(self.gl.clone(), obj)
     }
 }

@@ -1,152 +1,17 @@
-use std::{cell::RefCell, rc::Rc};
-
-use glam::Quat;
-use gltf::Gltf;
-use suricato::{
-    geometry::Geometry,
-    index_buffer::IndexBuffer,
-    material::Material,
-    mesh::Mesh,
-    renderer::App,
-    transform::Transform3D,
-    uniforms::Uniform,
-    utils::fetch_bytes,
-    vertex_buffer::{Data, InterleavedVertexBuffer, VertexData},
-};
-use wasm_bindgen::{JsCast, prelude::Closure};
-use wasm_bindgen_futures::spawn_local;
-
-fn main() {
-    console_error_panic_hook::set_once();
-    spawn_local(main_async());
-}
-
-async fn main_async() {
-    console_error_panic_hook::set_once();
-
-    let vertex_shader_source = r#"#version 300 es
-in vec3 position;
-in vec3 normal;
-in vec2 uv;
-
-out vec3 v_normal;
-uniform mat4 transform;
-
-void main() {
-    v_normal = normal;
-    gl_Position = transform * vec4(position, 10.0);
-}
-"#;
-    let fragment_shader_source = r#"#version 300 es
-precision mediump float;
-
-in vec3 v_normal;
-out vec4 fragment_color;
-
-void main() {
-    vec3 normal = normalize(v_normal);
-    float light = dot(normal, vec3(0.25, 25.0, -25.0));
-    fragment_color = vec4(1.0, 0.0, 0.0, 1.0);
-    fragment_color.rgb *= max(0.1, light);
-}
-"#;
-
-    let data = fetch_bytes("./test.glb").await.unwrap();
-    let gltf = Gltf::from_slice(&data).unwrap();
-
-    let mut buffers: Vec<Vec<u8>> = Vec::new();
-
-    for buffer in gltf.buffers() {
-        match buffer.source() {
-            gltf::buffer::Source::Bin => {
-                if let Some(blob) = gltf.blob.as_ref() {
-                    buffers.push(blob.clone());
-                } else {
-                    panic!("Binary buffer expected but not found");
-                }
-            }
-            gltf::buffer::Source::Uri(uri) => {
-                panic!("External buffer not supported: {}", uri);
-            }
-        }
-    }
-
-    let gltf_mesh = &gltf.meshes().next().unwrap();
-    let primitive = gltf_mesh.primitives().next().unwrap();
-    let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
-
-    let positions: Vec<[f32; 3]> = reader.read_positions().unwrap().collect();
-    let normals: Vec<[f32; 3]> = reader.read_normals().unwrap().collect();
-    let indices: Vec<u32> = reader.read_indices().unwrap().into_u32().collect();
-
-    let positions = VertexData {
-        name:      String::from("position"),
-        data:      Data::Vec3(positions),
-        divisor:   0,
-        normalize: false,
-    };
-
-    let normals = VertexData {
-        name:      String::from("normal"),
-        data:      Data::Vec3(normals),
-        divisor:   0,
-        normalize: false,
-    };
-
-    let index_buffer = IndexBuffer::from(indices);
-
-    let mut app = App::new();
-    let material = Material::new(vertex_shader_source, fragment_shader_source);
-
-    let geometry = Geometry {
-        vertex_count:               0,
-        instance_count:             None,
-        indices:                    Some(index_buffer),
-        vertex_buffers:             vec![],
-        interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(vec![positions, normals])],
-    };
-
-    let mut mesh = Mesh::new(geometry, material);
-
-    let mut transform = Transform3D::new();
-    transform.scale *= 0.25;
-    transform.translation.y = -0.5;
-
-    let main_loop = Rc::new(RefCell::new(None));
-    let main_loop_clone = main_loop.clone();
-
-    *main_loop_clone.borrow_mut() = Some(Closure::new(move || {
-        app.clear();
-        transform.rotation *= Quat::from_rotation_x(0.0003);
-        transform.rotation *= Quat::from_rotation_y(0.002);
-        mesh.material.set_uniform("transform", Uniform::Mat4(transform.to_array()));
-        app.render(&mut mesh).unwrap();
-        request_animation_frame(main_loop.borrow().as_ref().unwrap());
-    }));
-
-    request_animation_frame(main_loop_clone.borrow().as_ref().unwrap());
-}
-
-fn request_animation_frame(f: &Closure<dyn FnMut()>) {
-    web_sys::window()
-        .unwrap()
-        .request_animation_frame(f.as_ref().unchecked_ref())
-        .unwrap();
-}
-
 // use std::{cell::RefCell, rc::Rc};
 
 // use glam::Quat;
+// use gltf::Gltf;
 // use suricato::{
 //     geometry::Geometry,
+//     index_buffer::IndexBuffer,
 //     material::Material,
 //     mesh::Mesh,
-//     obj_parser::OBJ,
 //     renderer::App,
-//     texture::Texture,
 //     transform::Transform3D,
 //     uniforms::Uniform,
-//     utils::{fetch_image, fetch_text},
+//     utils::fetch_bytes,
+//     vertex_buffer::{Data, InterleavedVertexBuffer, VertexData},
 // };
 // use wasm_bindgen::{JsCast, prelude::Closure};
 // use wasm_bindgen_futures::spawn_local;
@@ -163,42 +28,89 @@ fn request_animation_frame(f: &Closure<dyn FnMut()>) {
 // in vec3 position;
 // in vec3 normal;
 // in vec2 uv;
+
+// out vec3 v_normal;
 // uniform mat4 transform;
-// out vec2 v_texture_coordinate;
 
 // void main() {
-//     v_texture_coordinate = uv;
-//     gl_Position = transform * vec4(position, 1.0);
+//     v_normal = normal;
+//     gl_Position = transform * vec4(position, 10.0);
 // }
 // "#;
 //     let fragment_shader_source = r#"#version 300 es
 // precision mediump float;
 
-// in vec2 v_texture_coordinate;
-
+// in vec3 v_normal;
 // out vec4 fragment_color;
 
-// uniform sampler2D chair_texture;
-
 // void main() {
-//     fragment_color = texture(chair_texture, v_texture_coordinate);
+//     vec3 normal = normalize(v_normal);
+//     float light = dot(normal, vec3(0.25, 25.0, -25.0));
+//     fragment_color = vec4(1.0, 0.0, 0.0, 1.0);
+//     fragment_color.rgb *= max(0.1, light);
 // }
 // "#;
 
-//     let obj_data = fetch_text("./chair.obj").await.unwrap();
-//     let obj = OBJ::try_from(obj_data).unwrap();
+//     let data = fetch_bytes("./test.glb").await.unwrap();
+//     let gltf = Gltf::from_slice(&data).unwrap();
+
+//     let mut buffers: Vec<Vec<u8>> = Vec::new();
+
+//     for buffer in gltf.buffers() {
+//         match buffer.source() {
+//             gltf::buffer::Source::Bin => {
+//                 if let Some(blob) = gltf.blob.as_ref() {
+//                     buffers.push(blob.clone());
+//                 } else {
+//                     panic!("Binary buffer expected but not found");
+//                 }
+//             }
+//             gltf::buffer::Source::Uri(uri) => {
+//                 panic!("External buffer not supported: {}", uri);
+//             }
+//         }
+//     }
+
+//     let gltf_mesh = &gltf.meshes().next().unwrap();
+//     let primitive = gltf_mesh.primitives().next().unwrap();
+//     let reader = primitive.reader(|buffer| Some(&buffers[buffer.index()]));
+
+//     let positions: Vec<[f32; 3]> = reader.read_positions().unwrap().collect();
+//     let normals: Vec<[f32; 3]> = reader.read_normals().unwrap().collect();
+//     let indices: Vec<u32> = reader.read_indices().unwrap().into_u32().collect();
+
+//     let positions = VertexData {
+//         name:      String::from("position"),
+//         data:      Data::Vec3(positions),
+//         divisor:   0,
+//         normalize: false,
+//     };
+
+//     let normals = VertexData {
+//         name:      String::from("normal"),
+//         data:      Data::Vec3(normals),
+//         divisor:   0,
+//         normalize: false,
+//     };
+
+//     let index_buffer = IndexBuffer::from(indices);
 
 //     let mut app = App::new();
 //     let material = Material::new(vertex_shader_source, fragment_shader_source);
-//     let geometry = Geometry::from(obj);
+
+//     let geometry = Geometry {
+//         vertex_count:               0,
+//         instance_count:             None,
+//         indices:                    Some(index_buffer),
+//         vertex_buffers:             vec![],
+//         interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(vec![positions, normals])],
+//     };
 
 //     let mut mesh = Mesh::new(geometry, material);
 
-//     let texture = Texture::from(fetch_image("./chair.png").await.unwrap());
-//     mesh.material.set_uniform("chair_texture", Uniform::Texture(texture));
-
 //     let mut transform = Transform3D::new();
-//     transform.scale *= 0.005;
+//     transform.scale *= 0.25;
+//     transform.translation.y = -0.5;
 
 //     let main_loop = Rc::new(RefCell::new(None));
 //     let main_loop_clone = main_loop.clone();
@@ -208,7 +120,7 @@ fn request_animation_frame(f: &Closure<dyn FnMut()>) {
 //         transform.rotation *= Quat::from_rotation_x(0.0003);
 //         transform.rotation *= Quat::from_rotation_y(0.002);
 //         mesh.material.set_uniform("transform", Uniform::Mat4(transform.to_array()));
-//         app.render(&mut mesh);
+//         app.render(&mut mesh).unwrap();
 //         request_animation_frame(main_loop.borrow().as_ref().unwrap());
 //     }));
 
@@ -221,6 +133,81 @@ fn request_animation_frame(f: &Closure<dyn FnMut()>) {
 //         .request_animation_frame(f.as_ref().unchecked_ref())
 //         .unwrap();
 // }
+
+use glam::Quat;
+use suricato::{
+    obj_parser::OBJ,
+    renderer::Renderer,
+    transform::Transform3D,
+    uniforms::Uniform,
+    utils::{fetch_image, fetch_text, request_animation_frame},
+};
+use wasm_bindgen_futures::spawn_local;
+
+fn main() {
+    console_error_panic_hook::set_once();
+    spawn_local(main_async());
+}
+
+async fn main_async() {
+    console_error_panic_hook::set_once();
+
+    let vertex_shader_source = r#"#version 300 es
+in vec3 position;
+in vec3 normal;
+in vec2 uv;
+
+out vec3 v_normal;
+out vec2 v_texture_coordinate;
+
+uniform mat4 transform;
+
+void main() {
+    v_normal = (transform * vec4(normal, 0.0)).xyz;
+    v_texture_coordinate = uv;
+    gl_Position = transform * vec4(position, 1.0);
+}
+"#;
+    let fragment_shader_source = r#"#version 300 es
+precision mediump float;
+
+in vec3 v_normal;
+in vec2 v_texture_coordinate;
+
+out vec4 fragment_color;
+uniform sampler2D chair_texture;
+
+void main() {
+    vec3 normal = normalize(v_normal);
+    float light = dot(normal, normalize(vec3(0.25, 25.0, -25.0)));
+    fragment_color = texture(chair_texture, v_texture_coordinate);
+    fragment_color.rgb *= max(0.2, light);
+}
+"#;
+
+    let obj_data = fetch_text("./chair.obj").await.unwrap();
+    let obj = OBJ::try_from(obj_data).unwrap();
+
+    let mut renderer = Renderer::new();
+    let material = renderer.create_material(vertex_shader_source, fragment_shader_source).unwrap();
+    let geometry = renderer.create_geometry_from_ojb(obj).unwrap();
+    let mut mesh = renderer.create_mesh(geometry, material).unwrap();
+
+    let html_image = fetch_image("./chair.png").await.unwrap();
+    let texture = renderer.create_texture_from_html_image(html_image).unwrap();
+    mesh.material.set_uniform("chair_texture", Uniform::Texture(texture));
+
+    let mut transform = Transform3D::new();
+    transform.scale *= 0.005;
+
+    request_animation_frame(Box::new(move || {
+        renderer.clear();
+        transform.rotation *= Quat::from_rotation_x(0.01);
+        transform.rotation *= Quat::from_rotation_y(0.02);
+        mesh.material.set_uniform("transform", Uniform::Mat4(transform.to_array()));
+        renderer.render(&mut mesh);
+    }));
+}
 
 // This function is automatically invoked after the Wasm module is instantiated.
 // fn run() -> Result<(), JsValue> {

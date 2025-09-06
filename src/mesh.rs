@@ -25,49 +25,35 @@ pub struct Mesh {
     pub geometry:         Geometry,
     pub material:         Material,
     pub render_primitive: RenderPrimitive,
-    pub vao:              Option<WebGlVertexArrayObject>,
+    pub vao:              WebGlVertexArrayObject,
 }
 
 impl Mesh {
-    pub fn new(geometry: Geometry, material: Material) -> Mesh {
-        Mesh {
+    pub fn new(gl: &GL, geometry: Geometry, material: Material) -> Result<Mesh, MeshError> {
+        Ok(Mesh {
+            vao: Mesh::create_vao(gl, &geometry, &material)?,
             geometry,
             material,
             render_primitive: RenderPrimitive::Triangles,
-            vao: None,
-        }
+        })
     }
 
-    pub fn get_or_create_vao(&mut self, gl: &GL) -> Result<&WebGlVertexArrayObject, MeshError> {
-        if self.vao.is_none() {
-            let vao = self.create_vao(gl)?;
-            self.vao = Some(vao);
-        }
-
-        Ok(self.vao.as_ref().unwrap())
-    }
-
-    fn create_vao(&mut self, gl: &GL) -> Result<WebGlVertexArrayObject, MeshError> {
+    fn create_vao(gl: &GL, geometry: &Geometry, material: &Material) -> Result<WebGlVertexArrayObject, MeshError> {
         let Some(vao) = gl.create_vertex_array() else {
             return Err(MeshError::VAOCreationFailed);
         };
 
         gl.bind_vertex_array(Some(&vao));
 
-        // Set attributes
-        let Some(material_resource) = &self.material.webgl_resources else {
-            return Err(MeshError::UninitializedMaterial);
-        };
-
-        for vertex_buffer in &self.geometry.vertex_buffers {
-            vertex_buffer.buffer.bind(gl);
-            material_resource.set_attribute_buffer(&vertex_buffer.layout);
+        for vertex_buffer in &geometry.vertex_buffers {
+            vertex_buffer.buffer.bind();
+            material.set_attribute_buffer(&vertex_buffer.layout);
         }
 
-        for vertex_buffer in &self.geometry.interleaved_vertex_buffers {
-            vertex_buffer.buffer.bind(gl);
+        for vertex_buffer in &geometry.interleaved_vertex_buffers {
+            vertex_buffer.buffer.bind();
             for vertex_layout in &vertex_buffer.layouts {
-                material_resource.set_attribute_buffer(vertex_layout);
+                material.set_attribute_buffer(vertex_layout);
             }
         }
 
