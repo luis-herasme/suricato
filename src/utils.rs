@@ -1,4 +1,8 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::atomic::{AtomicU64, Ordering},
+};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::js_sys::{Array, ArrayBuffer, Uint8Array, Uint32Array};
@@ -73,4 +77,23 @@ macro_rules! log {
     ($($arg:tt)*) => {
         console::log_1(&(std::fmt::format(format_args!($($arg)*))).into());
     }
+}
+
+fn request_animation_frame(fun: Box<dyn FnMut() -> ()>) {
+    let main_loop = Rc::new(RefCell::new(None));
+    let main_loop_clone = main_loop.clone();
+
+    *main_loop_clone.borrow_mut() = Some(Closure::new(move || {
+        fun.as_ref();
+        request_animation_frame_internal(main_loop.borrow().as_ref().unwrap());
+    }));
+
+    request_animation_frame_internal(main_loop_clone.borrow().as_ref().unwrap());
+}
+
+fn request_animation_frame_internal(f: &Closure<dyn FnMut()>) {
+    web_sys::window()
+        .unwrap()
+        .request_animation_frame(f.as_ref().unchecked_ref())
+        .unwrap();
 }
