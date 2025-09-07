@@ -77,20 +77,20 @@ impl Renderer {
 
     pub fn render(&mut self, mesh: &mut Mesh) {
         for vertex_buffer in &mut mesh.geometry.vertex_buffers {
-            vertex_buffer.buffer.on_before_render();
+            vertex_buffer.buffer.on_before_render(&self.gl);
         }
 
         for interleaved_vertex_buffer in &mut mesh.geometry.interleaved_vertex_buffers {
-            interleaved_vertex_buffer.buffer.on_before_render();
+            interleaved_vertex_buffer.buffer.on_before_render(&self.gl);
         }
 
         mesh.material.on_before_render(&self.gl);
 
-        self.gl.bind_vertex_array(Some(&mesh.vao));
+        self.gl.bind_vertex_array(mesh.get_or_create_vao(&self.gl));
 
         if let Some(indices) = &mut mesh.geometry.indices {
-            indices.buffer.on_before_render();
-            indices.buffer.bind();
+            indices.buffer.on_before_render(&self.gl);
+            indices.buffer.bind(&self.gl);
 
             if let Some(instance_count) = mesh.geometry.instance_count {
                 self.gl.draw_elements_instanced_with_i32(

@@ -1,6 +1,7 @@
+use wasm_bindgen::JsValue;
 use web_sys::{HtmlImageElement, WebGl2RenderingContext, WebGlTexture};
 
-use crate::renderer::Renderer;
+use crate::utils::fetch_image;
 
 #[repr(u32)]
 #[derive(Copy, Clone, Debug)]
@@ -78,16 +79,12 @@ pub struct Texture {
     pub format:               TextureFormat,
     pub internal_format:      TextureFormat,
     pub texture_data:         TextureData,
-    pub webgl_texture:        WebGlTexture,
+    pub webgl_texture:        Option<WebGlTexture>,
 }
 
 impl Texture {
-    pub fn new(renderer: &Renderer, texture_data: TextureData) -> Result<Texture, TextureError> {
-        let Some(webgl_texture) = renderer.gl.create_texture() else {
-            return Err(TextureError::CreationFailed);
-        };
-
-        let texture = Texture {
+    pub fn new(texture_data: TextureData) -> Texture {
+        Texture {
             minification_filter:  MinificationFilter::Nearest,
             magnification_filter: MagnificationFilter::Nearest,
             wrap_horizontal:      Wrap::Repeat,
@@ -96,16 +93,25 @@ impl Texture {
             format:               TextureFormat::RGBA,
             internal_format:      TextureFormat::RGBA,
             texture_data:         texture_data,
-            webgl_texture:        webgl_texture,
-        };
-
-        texture.upload_webgl_texture(&renderer.gl)?;
-
-        Ok(texture)
+            webgl_texture:        None,
+        }
     }
 
-    fn upload_webgl_texture(&self, gl: &WebGl2RenderingContext) -> Result<(), TextureError> {
-        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&self.webgl_texture));
+    pub fn get_webgl_texture(&mut self, gl: &WebGl2RenderingContext) -> Result<&WebGlTexture, TextureError> {
+        if self.webgl_texture.is_none() {
+            let webgl_texture = self.create_webgl_texture(gl)?;
+            self.webgl_texture = Some(webgl_texture);
+        }
+
+        Ok(self.webgl_texture.as_ref().unwrap())
+    }
+
+    fn create_webgl_texture(&self, gl: &WebGl2RenderingContext) -> Result<WebGlTexture, TextureError> {
+        let Some(webgl_texture) = gl.create_texture() else {
+            return Err(TextureError::CreationFailed);
+        };
+
+        gl.bind_texture(WebGl2RenderingContext::TEXTURE_2D, Some(&webgl_texture));
 
         match &self.texture_data {
             TextureData::HtmlImageElement(source) => {
@@ -147,6 +153,11 @@ impl Texture {
             self.magnification_filter as i32,
         );
 
-        Ok(())
+        Ok(webgl_texture)
+    }
+
+    pub async fn from_image_url(url: &str) -> Result<Texture, JsValue> {
+        let html_image = fetch_image(url).await?;
+        Ok(Texture::new(TextureData::HtmlImageElement(html_image)))
     }
 }

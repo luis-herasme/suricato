@@ -25,34 +25,37 @@ pub enum BufferError {
 
 #[derive(Debug, Clone)]
 pub struct BufferGPU {
-    gl:             GL,
-    kind:           BufferKind,
-    pub buffer_cpu: Vec<u8>,
-    pub buffer_gpu: WebGlBuffer,
-    needs_update:   bool,
+    kind:         BufferKind,
+    usage:        BufferUsage,
+    buffer_cpu:   Vec<u8>,
+    buffer_gpu:   Option<WebGlBuffer>,
+    needs_update: bool,
 }
 
 impl BufferGPU {
-    pub fn new(gl: GL, kind: BufferKind, usage: BufferUsage, buffer_cpu: Vec<u8>) -> Result<BufferGPU, BufferError> {
-        let buffer_gpu = BufferGPU::create_buffer_gpu(&gl, kind, usage, &buffer_cpu)?;
-
-        Ok(BufferGPU {
-            gl,
+    pub fn new(kind: BufferKind, usage: BufferUsage, buffer_cpu: Vec<u8>) -> BufferGPU {
+        BufferGPU {
             kind,
+            usage,
             buffer_cpu,
-            buffer_gpu,
+            buffer_gpu: None,
             needs_update: false,
-        })
+        }
     }
 
-    fn create_buffer_gpu(gl: &GL, kind: BufferKind, usage: BufferUsage, buffer_cpu: &[u8]) -> Result<WebGlBuffer, BufferError> {
-        let Some(webgl_buffer) = gl.create_buffer() else {
-            return Err(BufferError::CreationFailed);
-        };
+    pub fn get_buffer_gpu(&mut self, gl: &GL) -> Option<&WebGlBuffer> {
+        if self.buffer_gpu.is_none() {
+            self.create_buffer_gpu(gl);
+        }
 
-        gl.bind_buffer(kind as u32, Some(&webgl_buffer));
-        gl.buffer_data_with_u8_array(kind as u32, buffer_cpu, usage as u32);
-        Ok(webgl_buffer)
+        self.buffer_gpu.as_ref()
+    }
+
+    fn create_buffer_gpu(&mut self, gl: &GL) {
+        let webgl_buffer = gl.create_buffer().unwrap();
+        gl.bind_buffer(self.kind as u32, Some(&webgl_buffer));
+        gl.buffer_data_with_u8_array(self.kind as u32, &self.buffer_cpu, self.usage as u32);
+        self.buffer_gpu = Some(webgl_buffer);
     }
 
     #[inline]
@@ -63,22 +66,26 @@ impl BufferGPU {
     }
 
     #[inline(always)]
-    pub fn on_before_render(&mut self) {
+    pub fn on_before_render(&mut self, gl: &GL) {
+        if self.buffer_gpu.is_none() {
+            self.create_buffer_gpu(gl);
+        }
+
         if !self.needs_update {
             return;
         }
 
-        self.update_buffer_gpu();
+        self.update_buffer_gpu(gl);
         self.needs_update = false;
     }
 
-    fn update_buffer_gpu(&self) {
-        self.gl.bind_buffer(self.kind as u32, Some(&self.buffer_gpu));
-        self.gl.buffer_sub_data_with_i32_and_u8_array(self.kind as u32, 0, &self.buffer_cpu);
+    fn update_buffer_gpu(&mut self, gl: &GL) {
+        gl.bind_buffer(self.kind as u32, self.buffer_gpu.as_ref());
+        gl.buffer_sub_data_with_i32_and_u8_array(self.kind as u32, 0, &self.buffer_cpu);
     }
 
-    pub fn bind(&self) {
-        self.gl.bind_buffer(self.kind as u32, Some(&self.buffer_gpu));
+    pub fn bind(&self, gl: &GL) {
+        gl.bind_buffer(self.kind as u32, self.buffer_gpu.as_ref());
     }
 
     pub fn size(&self) -> usize {

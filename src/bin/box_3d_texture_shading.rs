@@ -55,13 +55,13 @@ void main() {
 async fn main_async() {
     let mut renderer = Renderer::new();
 
-    let material = Material::new(&renderer, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE).unwrap();
-    let geometry = Geometry::box_geometry(&renderer).unwrap();
-    let mut mesh = Mesh::new(&renderer, geometry, material).unwrap();
+    let material = Material::new(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
+    let geometry = Geometry::box_geometry();
+    let mut mesh = Mesh::new(geometry, material);
     mesh.transform.translation.z = -5.0;
 
     let html_image = fetch_image("./bob.png").await.unwrap();
-    let texture = Texture::new(&renderer, TextureData::HtmlImageElement(html_image)).unwrap();
+    let texture = Texture::new(TextureData::HtmlImageElement(html_image));
     mesh.material.set_uniform("texture_sampler", Uniform::Texture(texture));
 
     let mut camera = PerspectiveCamera::default();

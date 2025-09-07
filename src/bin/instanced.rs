@@ -30,9 +30,9 @@ async fn main_async() {
 
     let size = 10;
 
-    let material = Material::new(&renderer, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE).unwrap();
-    let geometry = Geometry::quad_instanced(&renderer, size * size).unwrap();
-    let mut mesh = Mesh::new(&renderer, geometry, material).unwrap();
+    let material = Material::new(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
+    let geometry = Geometry::quad_instanced(size * size);
+    let mut mesh = Mesh::new(geometry, material);
 
     let mut transforms = Vec::new();
 

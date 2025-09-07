@@ -1,8 +1,7 @@
 use web_sys::WebGl2RenderingContext as GL;
 
 use crate::{
-    buffer_gpu::{BufferError, BufferGPU, BufferKind, BufferUsage},
-    renderer::Renderer,
+    buffer_gpu::{BufferGPU, BufferKind, BufferUsage},
     utils::to_bytes,
 };
 
@@ -355,7 +354,7 @@ pub struct VertexBuffer {
 }
 
 impl VertexBuffer {
-    pub fn new(gl: GL, usage: BufferUsage, vertex: VertexData) -> Result<VertexBuffer, BufferError> {
+    pub fn new(usage: BufferUsage, vertex: VertexData) -> VertexBuffer {
         let layout = VertexLayout {
             name:              vertex.name.clone(),
             component_count:   vertex.data.component_count(),
@@ -367,14 +366,10 @@ impl VertexBuffer {
             number_of_columns: vertex.data.number_of_columns(),
         };
 
-        Ok(VertexBuffer {
-            buffer: BufferGPU::new(gl, BufferKind::ArrayBuffer, usage, vertex.data.to_bytes().to_vec())?,
-            layout: layout,
-        })
-    }
-
-    pub fn static_draw(renderer: &Renderer, vertex: VertexData) -> Result<VertexBuffer, BufferError> {
-        VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, vertex)
+        VertexBuffer {
+            buffer: BufferGPU::new(BufferKind::ArrayBuffer, usage, vertex.data.to_bytes().to_vec()),
+            layout,
+        }
     }
 
     pub fn vertex_count(&self) -> usize {
@@ -393,16 +388,16 @@ pub struct InterleavedVertexBuffer {
 }
 
 impl InterleavedVertexBuffer {
-    pub fn new(gl: GL, usage: BufferUsage, data: Vec<VertexData>) -> Result<InterleavedVertexBuffer, BufferError> {
+    pub fn new(usage: BufferUsage, data: Vec<VertexData>) -> InterleavedVertexBuffer {
         let layouts = VertexLayout::from_vertex_array(&data);
 
         let data: Vec<Data> = data.into_iter().map(|x| x.data).collect();
         let data = InterleavedVertexBuffer::vertex_data_array_to_bytes(&data, &layouts);
 
-        Ok(InterleavedVertexBuffer {
-            buffer: BufferGPU::new(gl, BufferKind::ArrayBuffer, usage, data)?,
+        InterleavedVertexBuffer {
+            buffer: BufferGPU::new(BufferKind::ArrayBuffer, usage, data),
             layouts,
-        })
+        }
     }
 
     pub fn vertex_count(&self) -> usize {

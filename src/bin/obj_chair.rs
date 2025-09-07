@@ -1,14 +1,7 @@
 use glam::Quat;
 use suricato::{
-    geometry::Geometry,
-    material::Material,
-    mesh::Mesh,
-    obj_parser::OBJ,
-    renderer::Renderer,
-    texture::{Texture, TextureData},
-    transform::Transform3D,
-    uniforms::Uniform,
-    utils::*,
+    geometry::Geometry, material::Material, mesh::Mesh, obj_parser::OBJ, renderer::Renderer, texture::Texture, transform::Transform3D,
+    uniforms::Uniform, utils::*,
 };
 use wasm_bindgen_futures::spawn_local;
 
@@ -56,12 +49,11 @@ async fn main_async() {
     let obj = OBJ::try_from(obj_data).unwrap();
 
     let mut renderer = Renderer::new();
-    let material = Material::new(&renderer, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE).unwrap();
-    let geometry = Geometry::from_obj(&renderer, obj).unwrap();
-    let mut mesh = Mesh::new(&renderer, geometry, material).unwrap();
+    let material = Material::new(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
+    let geometry = Geometry::from(obj);
+    let mut mesh = Mesh::new(geometry, material);
 
-    let html_image = fetch_image("./chair.png").await.unwrap();
-    let texture = Texture::new(&renderer, TextureData::HtmlImageElement(html_image)).unwrap();
+    let texture = Texture::from_image_url("./chair.png").await.unwrap();
     mesh.material.set_uniform("chair_texture", Uniform::Texture(texture));
 
     let mut transform = Transform3D::new();

@@ -1,8 +1,7 @@
 use crate::{
-    buffer_gpu::{BufferError, BufferUsage},
+    buffer_gpu::BufferUsage,
     index_buffer::IndexBuffer,
     obj_parser::OBJ,
-    renderer::Renderer,
     transform::Transform2D,
     vertex_buffer::{Data, InterleavedVertexBuffer, VertexBuffer, VertexData},
 };
@@ -70,7 +69,7 @@ impl Geometry {
         None
     }
 
-    pub fn box_geometry(renderer: &Renderer) -> Result<Geometry, BufferError> {
+    pub fn box_geometry() -> Geometry {
         static BOX_POSITIONS: [[f32; 3]; 24] = [
             // Front face (z = 0.5)
             [0.5, 0.5, 0.5],   // 0: Top-right
@@ -201,22 +200,188 @@ impl Geometry {
             divisor:   0,
         };
 
-        let indices = IndexBuffer::from_u8(renderer.gl.clone(), BufferUsage::StaticDraw, Vec::from(BOX_INDICES))?;
+        let indices = IndexBuffer::from_u8(BufferUsage::StaticDraw, Vec::from(BOX_INDICES));
 
-        Ok(Geometry {
+        Geometry {
             vertex_count:               24,
             instance_count:             None,
             indices:                    Some(indices),
             vertex_buffers:             vec![
-                VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, position)?,
-                VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, normal)?,
-                VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, uvs)?,
+                VertexBuffer::new(BufferUsage::StaticDraw, position),
+                VertexBuffer::new(BufferUsage::StaticDraw, normal),
+                VertexBuffer::new(BufferUsage::StaticDraw, uvs),
             ],
             interleaved_vertex_buffers: vec![],
-        })
+        }
     }
 
-    pub fn from_obj(renderer: &Renderer, obj: OBJ) -> Result<Geometry, BufferError> {
+    fn quad_data() -> (VertexData, VertexData, VertexData) {
+        let position = VertexData {
+            name:      String::from("position"),
+            data:      Data::Vec2(Vec::from(QUAD_POSITIONS)),
+            normalize: false,
+            divisor:   0,
+        };
+
+        let color = VertexData {
+            name:      String::from("color"),
+            data:      Data::UnsignedByteVec3(Vec::from(QUAD_COLORS)),
+            normalize: true,
+            divisor:   0,
+        };
+
+        let uvs = VertexData {
+            name:      String::from("uv"),
+            data:      Data::Vec2(Vec::from(QUAD_UVS)),
+            normalize: false,
+            divisor:   0,
+        };
+
+        (position, color, uvs)
+    }
+
+    pub fn quad() -> Geometry {
+        let (position, color, uvs) = Geometry::quad_data();
+        let indices = IndexBuffer::from_u8(BufferUsage::StaticDraw, Vec::from(QUAD_INDICES));
+
+        Geometry {
+            vertex_count:               4,
+            instance_count:             None,
+            indices:                    Some(indices),
+            vertex_buffers:             vec![
+                VertexBuffer::new(BufferUsage::StaticDraw, position),
+                VertexBuffer::new(BufferUsage::StaticDraw, color),
+                VertexBuffer::new(BufferUsage::StaticDraw, uvs),
+            ],
+            interleaved_vertex_buffers: vec![],
+        }
+    }
+
+    pub fn quad_interleaved() -> Geometry {
+        let (position, color, uvs) = Geometry::quad_data();
+
+        let indices = IndexBuffer::from_u8(
+            BufferUsage::StaticDraw,
+            vec![
+                0, 1, 2, // Triangle #1
+                2, 3, 0, // Triangle #2
+            ],
+        );
+
+        Geometry {
+            vertex_count:               4,
+            instance_count:             None,
+            indices:                    Some(indices),
+            vertex_buffers:             vec![],
+            interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(BufferUsage::StaticDraw, vec![position, color, uvs])],
+        }
+    }
+
+    pub fn quad_instanced_and_interleaved(count: usize) -> Geometry {
+        // Instance buffer
+        let mut trasnforms = Vec::with_capacity(count);
+
+        for _ in 0..count {
+            trasnforms.push(Transform2D::new().to_cols_array_2d());
+        }
+
+        let transform_buffer = VertexBuffer::new(
+            BufferUsage::StaticDraw,
+            VertexData {
+                name:      String::from("transform"),
+                data:      Data::Mat3(trasnforms),
+                normalize: false,
+                divisor:   1,
+            },
+        );
+
+        // Model buffer
+        let (position, color, uvs) = Geometry::quad_data();
+
+        let indices = IndexBuffer::from_u8(
+            BufferUsage::StaticDraw,
+            vec![
+                0, 1, 2, // Triangle #1
+                2, 3, 0, // Triangle #2
+            ],
+        );
+
+        Geometry {
+            vertex_count:               4,
+            indices:                    Some(indices),
+            instance_count:             Some(count),
+            interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(BufferUsage::StaticDraw, vec![position, color, uvs])],
+            vertex_buffers:             vec![transform_buffer],
+        }
+    }
+
+    pub fn quad_instanced(count: usize) -> Geometry {
+        // Instance buffer
+        let mut trasnforms = Vec::with_capacity(count);
+
+        for _ in 0..count {
+            trasnforms.push(Transform2D::new().to_cols_array_2d());
+        }
+
+        let per_instance_transforms = VertexData {
+            name:      String::from("transform"),
+            data:      Data::Mat3(trasnforms),
+            normalize: false,
+            divisor:   1,
+        };
+
+        // Model buffer
+        let (position, color, uvs) = Geometry::quad_data();
+
+        let color = VertexBuffer::new(BufferUsage::StaticDraw, color);
+        let position = VertexBuffer::new(BufferUsage::StaticDraw, position);
+        let uvs = VertexBuffer::new(BufferUsage::StaticDraw, uvs);
+        let per_instance_transforms = VertexBuffer::new(BufferUsage::DynamicDraw, per_instance_transforms);
+
+        let indices = IndexBuffer::from_u8(
+            BufferUsage::StaticDraw,
+            vec![
+                0, 1, 2, // Triangle #1
+                2, 3, 0, // Triangle #2
+            ],
+        );
+
+        Geometry {
+            vertex_count:               4,
+            indices:                    Some(indices),
+            instance_count:             Some(count),
+            interleaved_vertex_buffers: vec![],
+            vertex_buffers:             vec![color, position, uvs, per_instance_transforms],
+        }
+    }
+}
+
+impl From<VertexBuffer> for Geometry {
+    fn from(vertex_buffer: VertexBuffer) -> Geometry {
+        Geometry {
+            instance_count:             None,
+            vertex_count:               vertex_buffer.vertex_count(),
+            indices:                    None,
+            vertex_buffers:             vec![vertex_buffer],
+            interleaved_vertex_buffers: vec![],
+        }
+    }
+}
+
+impl From<InterleavedVertexBuffer> for Geometry {
+    fn from(interleaved_vertex_buffer: InterleavedVertexBuffer) -> Geometry {
+        Geometry {
+            instance_count:             None,
+            vertex_count:               interleaved_vertex_buffer.vertex_count(),
+            indices:                    None,
+            vertex_buffers:             vec![],
+            interleaved_vertex_buffers: vec![interleaved_vertex_buffer],
+        }
+    }
+}
+
+impl From<OBJ> for Geometry {
+    fn from(obj: OBJ) -> Geometry {
         let mut positions: Vec<[f32; 3]> = Vec::new();
         let mut normals: Vec<[f32; 3]> = Vec::new();
         let mut uvs: Vec<[f32; 2]> = Vec::new();
@@ -256,186 +421,6 @@ impl Geometry {
             normalize: false,
         };
 
-        Ok(Geometry::from(InterleavedVertexBuffer::new(
-            renderer.gl.clone(),
-            BufferUsage::StaticDraw,
-            vec![positions, normals, uvs],
-        )?))
-    }
-
-    fn quad_data() -> (VertexData, VertexData, VertexData) {
-        let position = VertexData {
-            name:      String::from("position"),
-            data:      Data::Vec2(Vec::from(QUAD_POSITIONS)),
-            normalize: false,
-            divisor:   0,
-        };
-
-        let color = VertexData {
-            name:      String::from("color"),
-            data:      Data::UnsignedByteVec3(Vec::from(QUAD_COLORS)),
-            normalize: true,
-            divisor:   0,
-        };
-
-        let uvs = VertexData {
-            name:      String::from("uv"),
-            data:      Data::Vec2(Vec::from(QUAD_UVS)),
-            normalize: false,
-            divisor:   0,
-        };
-
-        (position, color, uvs)
-    }
-
-    pub fn quad(renderer: &Renderer) -> Result<Geometry, BufferError> {
-        let (position, color, uvs) = Geometry::quad_data();
-        let indices = IndexBuffer::from_u8(renderer.gl.clone(), BufferUsage::StaticDraw, Vec::from(QUAD_INDICES))?;
-
-        Ok(Geometry {
-            vertex_count:               4,
-            instance_count:             None,
-            indices:                    Some(indices),
-            vertex_buffers:             vec![
-                VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, position)?,
-                VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, color)?,
-                VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, uvs)?,
-            ],
-            interleaved_vertex_buffers: vec![],
-        })
-    }
-
-    pub fn quad_interleaved(renderer: &Renderer) -> Result<Geometry, BufferError> {
-        let (position, color, uvs) = Geometry::quad_data();
-
-        let indices = IndexBuffer::from_u8(
-            renderer.gl.clone(),
-            BufferUsage::StaticDraw,
-            vec![
-                0, 1, 2, // Triangle #1
-                2, 3, 0, // Triangle #2
-            ],
-        )?;
-
-        Ok(Geometry {
-            vertex_count:               4,
-            instance_count:             None,
-            indices:                    Some(indices),
-            vertex_buffers:             vec![],
-            interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(
-                renderer.gl.clone(),
-                BufferUsage::StaticDraw,
-                vec![position, color, uvs],
-            )?],
-        })
-    }
-
-    pub fn quad_instanced_and_interleaved(renderer: &Renderer, count: usize) -> Result<Geometry, BufferError> {
-        // Instance buffer
-        let mut trasnforms = Vec::with_capacity(count);
-
-        for _ in 0..count {
-            trasnforms.push(Transform2D::new().to_cols_array_2d());
-        }
-
-        let transform_buffer = VertexBuffer::new(
-            renderer.gl.clone(),
-            BufferUsage::StaticDraw,
-            VertexData {
-                name:      String::from("transform"),
-                data:      Data::Mat3(trasnforms),
-                normalize: false,
-                divisor:   1,
-            },
-        )?;
-
-        // Model buffer
-        let (position, color, uvs) = Geometry::quad_data();
-
-        let indices = IndexBuffer::from_u8(
-            renderer.gl.clone(),
-            BufferUsage::StaticDraw,
-            vec![
-                0, 1, 2, // Triangle #1
-                2, 3, 0, // Triangle #2
-            ],
-        )?;
-
-        Ok(Geometry {
-            vertex_count:               4,
-            indices:                    Some(indices),
-            instance_count:             Some(count),
-            interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(
-                renderer.gl.clone(),
-                BufferUsage::StaticDraw,
-                vec![position, color, uvs],
-            )?],
-            vertex_buffers:             vec![transform_buffer],
-        })
-    }
-
-    pub fn quad_instanced(renderer: &Renderer, count: usize) -> Result<Geometry, BufferError> {
-        // Instance buffer
-        let mut trasnforms = Vec::with_capacity(count);
-
-        for _ in 0..count {
-            trasnforms.push(Transform2D::new().to_cols_array_2d());
-        }
-
-        let per_instance_transforms = VertexData {
-            name:      String::from("transform"),
-            data:      Data::Mat3(trasnforms),
-            normalize: false,
-            divisor:   1,
-        };
-
-        // Model buffer
-        let (position, color, uvs) = Geometry::quad_data();
-
-        let color = VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, color)?;
-        let position = VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, position)?;
-        let uvs = VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, uvs)?;
-        let per_instance_transforms = VertexBuffer::new(renderer.gl.clone(), BufferUsage::DynamicDraw, per_instance_transforms)?;
-
-        let indices = IndexBuffer::from_u8(
-            renderer.gl.clone(),
-            BufferUsage::StaticDraw,
-            vec![
-                0, 1, 2, // Triangle #1
-                2, 3, 0, // Triangle #2
-            ],
-        )?;
-
-        Ok(Geometry {
-            vertex_count:               4,
-            indices:                    Some(indices),
-            instance_count:             Some(count),
-            interleaved_vertex_buffers: vec![],
-            vertex_buffers:             vec![color, position, uvs, per_instance_transforms],
-        })
-    }
-}
-
-impl From<VertexBuffer> for Geometry {
-    fn from(vertex_buffer: VertexBuffer) -> Geometry {
-        Geometry {
-            instance_count:             None,
-            vertex_count:               vertex_buffer.vertex_count(),
-            indices:                    None,
-            vertex_buffers:             vec![vertex_buffer],
-            interleaved_vertex_buffers: vec![],
-        }
-    }
-}
-
-impl From<InterleavedVertexBuffer> for Geometry {
-    fn from(interleaved_vertex_buffer: InterleavedVertexBuffer) -> Geometry {
-        Geometry {
-            instance_count:             None,
-            vertex_count:               interleaved_vertex_buffer.vertex_count(),
-            indices:                    None,
-            vertex_buffers:             vec![],
-            interleaved_vertex_buffers: vec![interleaved_vertex_buffer],
-        }
+        Geometry::from(InterleavedVertexBuffer::new(BufferUsage::StaticDraw, vec![positions, normals, uvs]))
     }
 }

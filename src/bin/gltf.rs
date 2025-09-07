@@ -91,20 +91,18 @@ async fn main_async() {
     };
 
     let mut renderer = Renderer::new();
-    let material = Material::new(&renderer, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE).unwrap();
-    let index_buffer = IndexBuffer::from_u32(renderer.gl.clone(), BufferUsage::StaticDraw, indices).unwrap();
+    let material = Material::new(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
+    let index_buffer = IndexBuffer::from_u32(BufferUsage::StaticDraw, indices);
 
     let geometry = Geometry {
         vertex_count:               0,
         instance_count:             None,
         indices:                    Some(index_buffer),
         vertex_buffers:             vec![],
-        interleaved_vertex_buffers: vec![
-            InterleavedVertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, vec![positions, normals]).unwrap(),
-        ],
+        interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(BufferUsage::StaticDraw, vec![positions, normals])],
     };
 
-    let mut mesh = Mesh::new(&renderer, geometry, material).unwrap();
+    let mut mesh = Mesh::new(geometry, material);
 
     let mut transform = Transform3D::new();
     transform.scale *= 0.25;

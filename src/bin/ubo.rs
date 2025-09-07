@@ -43,9 +43,9 @@ void main() {
 
 async fn main_async() {
     let mut renderer = Renderer::new();
-    let material = Material::new(&renderer, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE).unwrap();
-    let geometry = Geometry::quad(&renderer).unwrap();
-    let mut mesh = Mesh::new(&renderer, geometry, material).unwrap();
+    let material = Material::new(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
+    let geometry = Geometry::quad();
+    let mut mesh = Mesh::new(geometry, material);
 
     let ubo_binding_point = 1;
 
@@ -55,7 +55,7 @@ async fn main_async() {
         0.0, 1.0, 0.0, 1.0, // colors[1]
         0.0, 0.0, 1.0, 1.0, // colors[2]
     ];
-    let mut ubo = UniformBufferObject::new(&renderer, to_bytes(&colors)).unwrap();
+    let mut ubo = UniformBufferObject::new(&renderer, to_bytes(&colors));
 
     // UBO #2
     let colors2: Vec<f32> = vec![
@@ -63,9 +63,13 @@ async fn main_async() {
         0.5, 1.0, 0.5, 1.0, // colors[1]
         0.5, 0.5, 1.0, 1.0, // colors[2]
     ];
-    let mut ubo2 = UniformBufferObject::new(&renderer, to_bytes(&colors2)).unwrap();
+    let mut ubo2 = UniformBufferObject::new(&renderer, to_bytes(&colors2));
 
-    mesh.material.set_uniform_block("Colors", ubo_binding_point);
+    mesh.material
+        .resources
+        .as_ref()
+        .unwrap()
+        .set_uniform_block("Colors", ubo_binding_point);
 
     request_animation_frame(Box::new(move || {
         renderer.clear();

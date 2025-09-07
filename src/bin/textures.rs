@@ -1,12 +1,4 @@
-use suricato::{
-    geometry::Geometry,
-    material::Material,
-    mesh::Mesh,
-    renderer::Renderer,
-    texture::{Texture, TextureData},
-    uniforms::Uniform,
-    utils::*,
-};
+use suricato::{geometry::Geometry, material::Material, mesh::Mesh, renderer::Renderer, texture::Texture, uniforms::Uniform, utils::*};
 use wasm_bindgen_futures::spawn_local;
 
 fn main() {
@@ -42,12 +34,11 @@ void main() {
 async fn main_async() {
     let mut renderer = Renderer::new();
 
-    let material = Material::new(&renderer, VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE).unwrap();
-    let geometry = Geometry::quad(&renderer).unwrap();
-    let mut mesh = Mesh::new(&renderer, geometry, material).unwrap();
+    let material = Material::new(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
+    let geometry = Geometry::quad();
+    let mut mesh = Mesh::new(geometry, material);
 
-    let html_image = fetch_image("./bob.png").await.unwrap();
-    let texture = Texture::new(&renderer, TextureData::HtmlImageElement(html_image)).unwrap();
+    let texture = Texture::from_image_url("./bob.png").await.unwrap();
     mesh.material.set_uniform("t1", Uniform::Texture(texture));
 
     request_animation_frame(Box::new(move || {

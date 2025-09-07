@@ -1,6 +1,6 @@
 use web_sys::{WebGl2RenderingContext as GL, WebGlVertexArrayObject};
 
-use crate::{geometry::Geometry, material::Material, renderer::Renderer, transform::Transform3D};
+use crate::{geometry::Geometry, material::Material, transform::Transform3D};
 
 /// https://developer.mozilla.org/en-US/docs/Web/API/WebGL2RenderingContext/drawArraysInstanced#mode
 #[repr(u32)]
@@ -26,36 +26,49 @@ pub struct Mesh {
     pub geometry:         Geometry,
     pub material:         Material,
     pub render_primitive: RenderPrimitive,
-    pub vao:              WebGlVertexArrayObject,
+    pub vao:              Option<WebGlVertexArrayObject>,
 }
 
 impl Mesh {
-    pub fn new(renderer: &Renderer, geometry: Geometry, material: Material) -> Result<Mesh, MeshError> {
-        Ok(Mesh {
+    pub fn new(geometry: Geometry, material: Material) -> Mesh {
+        Mesh {
             transform: Transform3D::new(),
-            vao: Mesh::create_vao(&renderer.gl, &geometry, &material)?,
+            vao: None,
             geometry,
             material,
             render_primitive: RenderPrimitive::Triangles,
-        })
+        }
     }
 
-    fn create_vao(gl: &GL, geometry: &Geometry, material: &Material) -> Result<WebGlVertexArrayObject, MeshError> {
+    pub fn get_or_create_vao(&mut self, gl: &GL) -> Option<&WebGlVertexArrayObject> {
+        if self.vao.is_none() {
+            let vao = self.create_vao(gl).unwrap();
+            self.vao = Some(vao);
+        }
+
+        self.vao.as_ref()
+    }
+
+    fn create_vao(&mut self, gl: &GL) -> Result<WebGlVertexArrayObject, MeshError> {
         let Some(vao) = gl.create_vertex_array() else {
             return Err(MeshError::VAOCreationFailed);
         };
 
         gl.bind_vertex_array(Some(&vao));
 
-        for vertex_buffer in &geometry.vertex_buffers {
-            vertex_buffer.buffer.bind();
-            material.set_attribute_buffer(&vertex_buffer.layout);
+        for vertex_buffer in &self.geometry.vertex_buffers {
+            vertex_buffer.buffer.bind(gl);
+            self.material
+                .resources
+                .as_ref()
+                .unwrap()
+                .set_attribute_buffer(&vertex_buffer.layout);
         }
 
-        for vertex_buffer in &geometry.interleaved_vertex_buffers {
-            vertex_buffer.buffer.bind();
+        for vertex_buffer in &self.geometry.interleaved_vertex_buffers {
+            vertex_buffer.buffer.bind(gl);
             for vertex_layout in &vertex_buffer.layouts {
-                material.set_attribute_buffer(vertex_layout);
+                self.material.resources.as_ref().unwrap().set_attribute_buffer(vertex_layout);
             }
         }
 
