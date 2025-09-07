@@ -1,5 +1,6 @@
 use crate::texture::Texture;
 
+#[derive(Debug, Clone)]
 pub enum Uniform {
     Float(f32),
     Vec2([f32; 2]),
