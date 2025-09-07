@@ -207,9 +207,9 @@ impl Geometry {
             instance_count:             None,
             indices:                    Some(indices),
             vertex_buffers:             vec![
-                VertexBuffer::new(BufferUsage::StaticDraw, position),
-                VertexBuffer::new(BufferUsage::StaticDraw, normal),
-                VertexBuffer::new(BufferUsage::StaticDraw, uvs),
+                VertexBuffer::with_config(BufferUsage::StaticDraw, position),
+                VertexBuffer::with_config(BufferUsage::StaticDraw, normal),
+                VertexBuffer::with_config(BufferUsage::StaticDraw, uvs),
             ],
             interleaved_vertex_buffers: vec![],
         }
@@ -249,9 +249,9 @@ impl Geometry {
             instance_count:             None,
             indices:                    Some(indices),
             vertex_buffers:             vec![
-                VertexBuffer::new(BufferUsage::StaticDraw, position),
-                VertexBuffer::new(BufferUsage::StaticDraw, color),
-                VertexBuffer::new(BufferUsage::StaticDraw, uvs),
+                VertexBuffer::with_config(BufferUsage::StaticDraw, position),
+                VertexBuffer::with_config(BufferUsage::StaticDraw, color),
+                VertexBuffer::with_config(BufferUsage::StaticDraw, uvs),
             ],
             interleaved_vertex_buffers: vec![],
         }
@@ -285,7 +285,7 @@ impl Geometry {
             trasnforms.push(Transform2D::new().to_cols_array_2d());
         }
 
-        let transform_buffer = VertexBuffer::new(
+        let transform_buffer = VertexBuffer::with_config(
             BufferUsage::StaticDraw,
             VertexData {
                 name:      String::from("transform"),
@@ -333,10 +333,10 @@ impl Geometry {
         // Model buffer
         let (position, color, uvs) = Geometry::quad_data();
 
-        let color = VertexBuffer::new(BufferUsage::StaticDraw, color);
-        let position = VertexBuffer::new(BufferUsage::StaticDraw, position);
-        let uvs = VertexBuffer::new(BufferUsage::StaticDraw, uvs);
-        let per_instance_transforms = VertexBuffer::new(BufferUsage::DynamicDraw, per_instance_transforms);
+        let color = VertexBuffer::with_config(BufferUsage::StaticDraw, color);
+        let position = VertexBuffer::with_config(BufferUsage::StaticDraw, position);
+        let uvs = VertexBuffer::with_config(BufferUsage::StaticDraw, uvs);
+        let per_instance_transforms = VertexBuffer::with_config(BufferUsage::DynamicDraw, per_instance_transforms);
 
         let indices = IndexBuffer::from_u8(
             BufferUsage::StaticDraw,

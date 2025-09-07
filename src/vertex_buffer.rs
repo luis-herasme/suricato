@@ -108,6 +108,21 @@ impl VertexLayout {
     }
 }
 
+impl From<&VertexData> for VertexLayout {
+    fn from(vertex: &VertexData) -> VertexLayout {
+        VertexLayout {
+            name:              vertex.name.clone(),
+            component_count:   vertex.data.component_count(),
+            component_type:    vertex.data.component_type(),
+            normalize:         vertex.normalize,
+            stride:            vertex.data.size_in_bytes(),
+            offset:            0,
+            divisor:           vertex.divisor,
+            number_of_columns: vertex.data.number_of_columns(),
+        }
+    }
+}
+
 /// A temporary container for a single attribute's raw data (e.g., a Vec of positions)
 /// before it's processed into a VertexBuffer.
 pub struct VertexData {
@@ -117,11 +132,25 @@ pub struct VertexData {
     pub normalize: bool,
 }
 
+impl VertexData {
+    pub fn new<T>(name: &str, data: T) -> VertexData
+    where
+        Data: From<T>,
+    {
+        VertexData {
+            name:      String::from(name),
+            data:      Data::from(data),
+            divisor:   0,
+            normalize: false,
+        }
+    }
+}
+
 pub enum Data {
     Byte(Vec<i8>),
-    ByteVec2(Vec<[u8; 2]>),
-    ByteVec3(Vec<[u8; 3]>),
-    ByteVec4(Vec<[u8; 4]>),
+    ByteVec2(Vec<[i8; 2]>),
+    ByteVec3(Vec<[i8; 3]>),
+    ByteVec4(Vec<[i8; 4]>),
 
     UnsignedByte(Vec<u8>),
     UnsignedByteVec2(Vec<[u8; 2]>),
@@ -156,6 +185,192 @@ pub enum Data {
     Mat2(Vec<[[f32; 2]; 2]>),
     Mat3(Vec<[[f32; 3]; 3]>),
     Mat4(Vec<[[f32; 4]; 4]>),
+}
+
+impl From<Vec<i8>> for Data {
+    fn from(value: Vec<i8>) -> Self {
+        Data::Byte(value)
+    }
+}
+
+impl From<Vec<[i8; 2]>> for Data {
+    fn from(value: Vec<[i8; 2]>) -> Self {
+        Data::ByteVec2(value)
+    }
+}
+
+impl From<Vec<[i8; 3]>> for Data {
+    fn from(value: Vec<[i8; 3]>) -> Self {
+        Data::ByteVec3(value)
+    }
+}
+
+impl From<Vec<[i8; 4]>> for Data {
+    fn from(value: Vec<[i8; 4]>) -> Self {
+        Data::ByteVec4(value)
+    }
+}
+
+impl From<Vec<u8>> for Data {
+    fn from(value: Vec<u8>) -> Self {
+        Data::UnsignedByte(value)
+    }
+}
+
+impl From<Vec<[u8; 2]>> for Data {
+    fn from(value: Vec<[u8; 2]>) -> Self {
+        Data::UnsignedByteVec2(value)
+    }
+}
+
+impl From<Vec<[u8; 3]>> for Data {
+    fn from(value: Vec<[u8; 3]>) -> Self {
+        Data::UnsignedByteVec3(value)
+    }
+}
+
+impl From<Vec<[u8; 4]>> for Data {
+    fn from(value: Vec<[u8; 4]>) -> Self {
+        Data::UnsignedByteVec4(value)
+    }
+}
+
+impl From<Vec<f32>> for Data {
+    fn from(value: Vec<f32>) -> Self {
+        Data::Float(value)
+    }
+}
+
+impl From<Vec<[f32; 2]>> for Data {
+    fn from(value: Vec<[f32; 2]>) -> Self {
+        Data::Vec2(value)
+    }
+}
+
+impl From<Vec<[f32; 3]>> for Data {
+    fn from(value: Vec<[f32; 3]>) -> Self {
+        Data::Vec3(value)
+    }
+}
+
+impl From<Vec<[f32; 4]>> for Data {
+    fn from(value: Vec<[f32; 4]>) -> Self {
+        Data::Vec4(value)
+    }
+}
+
+impl From<Vec<i32>> for Data {
+    fn from(value: Vec<i32>) -> Self {
+        Data::Int(value)
+    }
+}
+
+impl From<Vec<[i32; 2]>> for Data {
+    fn from(value: Vec<[i32; 2]>) -> Self {
+        Data::IntVec2(value)
+    }
+}
+
+impl From<Vec<[i32; 3]>> for Data {
+    fn from(value: Vec<[i32; 3]>) -> Self {
+        Data::IntVec3(value)
+    }
+}
+
+impl From<Vec<[i32; 4]>> for Data {
+    fn from(value: Vec<[i32; 4]>) -> Self {
+        Data::IntVec4(value)
+    }
+}
+
+impl From<Vec<u32>> for Data {
+    fn from(value: Vec<u32>) -> Self {
+        Data::UnsignedInt(value)
+    }
+}
+
+impl From<Vec<[u32; 2]>> for Data {
+    fn from(value: Vec<[u32; 2]>) -> Self {
+        Data::UnsignedIntVec2(value)
+    }
+}
+
+impl From<Vec<[u32; 3]>> for Data {
+    fn from(value: Vec<[u32; 3]>) -> Self {
+        Data::UnsignedIntVec3(value)
+    }
+}
+
+impl From<Vec<[u32; 4]>> for Data {
+    fn from(value: Vec<[u32; 4]>) -> Self {
+        Data::UnsignedIntVec4(value)
+    }
+}
+
+impl From<Vec<i16>> for Data {
+    fn from(value: Vec<i16>) -> Self {
+        Data::Short(value)
+    }
+}
+
+impl From<Vec<[i16; 2]>> for Data {
+    fn from(value: Vec<[i16; 2]>) -> Self {
+        Data::ShortVec2(value)
+    }
+}
+
+impl From<Vec<[i16; 3]>> for Data {
+    fn from(value: Vec<[i16; 3]>) -> Self {
+        Data::ShortVec3(value)
+    }
+}
+
+impl From<Vec<[i16; 4]>> for Data {
+    fn from(value: Vec<[i16; 4]>) -> Self {
+        Data::ShortVec4(value)
+    }
+}
+
+impl From<Vec<u16>> for Data {
+    fn from(value: Vec<u16>) -> Self {
+        Data::UnsignedShort(value)
+    }
+}
+
+impl From<Vec<[u16; 2]>> for Data {
+    fn from(value: Vec<[u16; 2]>) -> Self {
+        Data::UnsignedShortVec2(value)
+    }
+}
+
+impl From<Vec<[u16; 3]>> for Data {
+    fn from(value: Vec<[u16; 3]>) -> Self {
+        Data::UnsignedShortVec3(value)
+    }
+}
+
+impl From<Vec<[u16; 4]>> for Data {
+    fn from(value: Vec<[u16; 4]>) -> Self {
+        Data::UnsignedShortVec4(value)
+    }
+}
+
+impl From<Vec<[[f32; 2]; 2]>> for Data {
+    fn from(value: Vec<[[f32; 2]; 2]>) -> Self {
+        Data::Mat2(value)
+    }
+}
+
+impl From<Vec<[[f32; 3]; 3]>> for Data {
+    fn from(value: Vec<[[f32; 3]; 3]>) -> Self {
+        Data::Mat3(value)
+    }
+}
+
+impl From<Vec<[[f32; 4]; 4]>> for Data {
+    fn from(value: Vec<[[f32; 4]; 4]>) -> Self {
+        Data::Mat4(value)
+    }
 }
 
 impl Data {
@@ -345,8 +560,8 @@ impl Data {
     }
 }
 
-/// Represents a buffer of vertex data stored in system memory,
-/// with metadata about how the data should be uploaded to and
+/// Represents a buffer of vertex data stored in the CPC and the
+/// GPU, with metadata about how the data should be uploaded to and
 /// interpreted by the GPU.
 pub struct VertexBuffer {
     pub layout: VertexLayout,
@@ -354,20 +569,28 @@ pub struct VertexBuffer {
 }
 
 impl VertexBuffer {
-    pub fn new(usage: BufferUsage, vertex: VertexData) -> VertexBuffer {
-        let layout = VertexLayout {
-            name:              vertex.name.clone(),
-            component_count:   vertex.data.component_count(),
-            component_type:    vertex.data.component_type(),
-            normalize:         vertex.normalize,
-            stride:            vertex.data.size_in_bytes(),
-            offset:            0,
-            divisor:           vertex.divisor,
-            number_of_columns: vertex.data.number_of_columns(),
-        };
+    pub fn new<T>(name: &str, data: T) -> VertexBuffer
+    where
+        Data: From<T>,
+    {
+        let vertex_data = VertexData::new(name, data);
+        let layout = VertexLayout::from(&vertex_data);
 
         VertexBuffer {
-            buffer: BufferGPU::new(BufferKind::ArrayBuffer, usage, vertex.data.to_bytes().to_vec()),
+            buffer: BufferGPU::new(
+                BufferKind::ArrayBuffer,
+                BufferUsage::StaticDraw,
+                vertex_data.data.to_bytes().to_vec(),
+            ),
+            layout,
+        }
+    }
+
+    pub fn with_config(usage: BufferUsage, vertex_data: VertexData) -> VertexBuffer {
+        let layout = VertexLayout::from(&vertex_data);
+
+        VertexBuffer {
+            buffer: BufferGPU::new(BufferKind::ArrayBuffer, usage, vertex_data.data.to_bytes().to_vec()),
             layout,
         }
     }
