@@ -1,4 +1,5 @@
 pub mod buffer_gpu;
+pub mod camera;
 pub mod geometry;
 pub mod index_buffer;
 pub mod material;

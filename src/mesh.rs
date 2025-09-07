@@ -1,6 +1,6 @@
 use web_sys::{WebGl2RenderingContext as GL, WebGlVertexArrayObject};
 
-use crate::{geometry::Geometry, material::Material, renderer::Renderer};
+use crate::{geometry::Geometry, material::Material, renderer::Renderer, transform::Transform3D};
 
 /// https://developer.mozilla.org/en-US/docs/Web/API/WebGL2RenderingContext/drawArraysInstanced#mode
 #[repr(u32)]
@@ -22,6 +22,7 @@ pub enum MeshError {
 }
 
 pub struct Mesh {
+    pub transform:        Transform3D,
     pub geometry:         Geometry,
     pub material:         Material,
     pub render_primitive: RenderPrimitive,
@@ -31,6 +32,7 @@ pub struct Mesh {
 impl Mesh {
     pub fn new(renderer: &Renderer, geometry: Geometry, material: Material) -> Result<Mesh, MeshError> {
         Ok(Mesh {
+            transform: Transform3D::new(),
             vao: Mesh::create_vao(&renderer.gl, &geometry, &material)?,
             geometry,
             material,
