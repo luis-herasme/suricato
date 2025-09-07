@@ -5,7 +5,6 @@ use crate::{
     buffer_gpu::BufferError,
     material::MaterialError,
     mesh::{Mesh, MeshError},
-    ubo::UniformBufferObject,
 };
 
 #[derive(Debug)]
@@ -34,9 +33,8 @@ impl From<MeshError> for RenderError {
 }
 
 pub struct Renderer {
-    pub gl:                 GL,
-    pub canvas:             HtmlCanvasElement,
-    uniform_buffer_objects: Vec<UniformBufferObject>,
+    pub gl:     GL,
+    pub canvas: HtmlCanvasElement,
 }
 
 impl Renderer {
@@ -51,11 +49,7 @@ impl Renderer {
 
         gl.enable(GL::DEPTH_TEST);
 
-        Renderer {
-            gl,
-            canvas,
-            uniform_buffer_objects: Vec::new(),
-        }
+        Renderer { gl, canvas }
     }
 
     pub fn clear(&self) {
@@ -70,10 +64,6 @@ impl Renderer {
 
         for interleaved_vertex_buffer in &mut mesh.geometry.interleaved_vertex_buffers {
             interleaved_vertex_buffer.buffer.on_before_render();
-        }
-
-        for uniform_buffer_object in &mut self.uniform_buffer_objects {
-            uniform_buffer_object.buffer.on_before_render();
         }
 
         mesh.material.on_before_render(&self.gl);
@@ -104,14 +94,5 @@ impl Renderer {
             self.gl
                 .draw_arrays(mesh.render_primitive as u32, 0, mesh.geometry.vertex_count as i32);
         }
-    }
-
-    /// UBO
-    pub fn add_ubo(&mut self, ubo: UniformBufferObject) {
-        self.uniform_buffer_objects.push(ubo);
-    }
-
-    pub fn get_ubo(&mut self, ubo_binding_point: usize) -> &UniformBufferObject {
-        &self.uniform_buffer_objects[ubo_binding_point]
     }
 }

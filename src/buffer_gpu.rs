@@ -25,11 +25,11 @@ pub enum BufferError {
 
 #[derive(Debug, Clone)]
 pub struct BufferGPU {
-    gl:           GL,
-    kind:         BufferKind,
-    buffer_cpu:   Vec<u8>,
-    buffer_gpu:   WebGlBuffer,
-    needs_update: bool,
+    gl:             GL,
+    kind:           BufferKind,
+    pub buffer_cpu: Vec<u8>,
+    pub buffer_gpu: WebGlBuffer,
+    needs_update:   bool,
 }
 
 impl BufferGPU {
