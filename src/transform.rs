@@ -20,8 +20,24 @@ impl Transform3D {
         self.to_mat4().to_cols_array()
     }
 
+    pub fn to_cols_array_2d(&self) -> [[f32; 4]; 4] {
+        self.to_mat4().to_cols_array_2d()
+    }
+
     pub fn to_mat4(&self) -> Mat4 {
         Mat4::from_scale_rotation_translation(self.scale, self.rotation, self.translation)
+    }
+}
+
+impl From<Mat4> for Transform3D {
+    fn from(value: Mat4) -> Transform3D {
+        let (scale, rotation, translation) = value.to_scale_rotation_translation();
+
+        Transform3D {
+            scale,
+            rotation,
+            translation,
+        }
     }
 }
 
@@ -43,6 +59,10 @@ impl Transform2D {
 
     pub fn to_array(&self) -> [f32; 9] {
         self.to_mat3().to_cols_array()
+    }
+
+    pub fn to_cols_array_2d(&self) -> [[f32; 3]; 3] {
+        self.to_mat3().to_cols_array_2d()
     }
 
     pub fn to_mat3(&self) -> Mat3 {

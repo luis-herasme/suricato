@@ -335,7 +335,7 @@ impl Geometry {
         let mut trasnforms = Vec::with_capacity(count);
 
         for _ in 0..count {
-            trasnforms.push(Transform2D::new().to_array());
+            trasnforms.push(Transform2D::new().to_cols_array_2d());
         }
 
         let transform_buffer = VertexBuffer::new(
@@ -379,7 +379,7 @@ impl Geometry {
         let mut trasnforms = Vec::with_capacity(count);
 
         for _ in 0..count {
-            trasnforms.push(Transform2D::new().to_array());
+            trasnforms.push(Transform2D::new().to_cols_array_2d());
         }
 
         let per_instance_transforms = VertexData {
@@ -413,6 +413,18 @@ impl Geometry {
             interleaved_vertex_buffers: vec![],
             vertex_buffers:             vec![color, position, uvs, per_instance_transforms],
         })
+    }
+}
+
+impl From<VertexBuffer> for Geometry {
+    fn from(vertex_buffer: VertexBuffer) -> Geometry {
+        Geometry {
+            instance_count:             None,
+            vertex_count:               vertex_buffer.vertex_count(),
+            indices:                    None,
+            vertex_buffers:             vec![vertex_buffer],
+            interleaved_vertex_buffers: vec![],
+        }
     }
 }
 

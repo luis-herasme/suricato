@@ -71,7 +71,7 @@ async fn main_async() {
         renderer.clear();
         transform.rotation *= Quat::from_rotation_x(0.01);
         transform.rotation *= Quat::from_rotation_y(0.02);
-        mesh.material.set_uniform("transform", Uniform::Mat4(transform.to_array()));
+        mesh.material.set_uniform("transform", Uniform::from(&transform));
         renderer.render(&mut mesh);
     }));
 }

@@ -2,6 +2,7 @@ use web_sys::WebGl2RenderingContext as GL;
 
 use crate::{
     buffer_gpu::{BufferError, BufferGPU, BufferKind, BufferUsage},
+    renderer::Renderer,
     utils::to_bytes,
 };
 
@@ -153,9 +154,9 @@ pub enum Data {
     UnsignedShortVec3(Vec<[u16; 3]>),
     UnsignedShortVec4(Vec<[u16; 4]>),
 
-    Mat2(Vec<[f32; 4]>),
-    Mat3(Vec<[f32; 9]>),
-    Mat4(Vec<[f32; 16]>),
+    Mat2(Vec<[[f32; 2]; 2]>),
+    Mat3(Vec<[[f32; 3]; 3]>),
+    Mat4(Vec<[[f32; 4]; 4]>),
 }
 
 impl Data {
@@ -370,6 +371,14 @@ impl VertexBuffer {
             buffer: BufferGPU::new(gl, BufferKind::ArrayBuffer, usage, vertex.data.to_bytes().to_vec())?,
             layout: layout,
         })
+    }
+
+    pub fn static_draw(renderer: &Renderer, vertex: VertexData) -> Result<VertexBuffer, BufferError> {
+        VertexBuffer::new(renderer.gl.clone(), BufferUsage::StaticDraw, vertex)
+    }
+
+    pub fn vertex_count(&self) -> usize {
+        self.buffer.size() / self.layout.stride
     }
 
     #[inline]
