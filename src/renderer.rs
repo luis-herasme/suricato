@@ -6,6 +6,7 @@ use crate::{
     camera::PerspectiveCamera,
     material::MaterialError,
     mesh::{Mesh, MeshError},
+    uniforms::Uniform,
 };
 
 #[derive(Debug)]
@@ -72,6 +73,23 @@ impl Renderer {
             self.canvas.set_height(height as u32);
 
             self.gl.viewport(0, 0, width as i32, height as i32);
+        }
+    }
+
+    pub fn render_scene(&mut self, scene: &mut Vec<Mesh>, camera: &mut PerspectiveCamera) {
+        self.clear();
+        self.handle_window_resize(camera);
+
+        for mesh in scene.iter_mut() {
+            mesh.material.set_uniform("transform", Uniform::Mat4(mesh.transform.to_array()));
+
+            // Camera
+            let projection_matrix = Uniform::from(&camera.projection_matrix);
+            let camera_inverse_matrix = Uniform::Mat4(camera.transform.to_mat4().inverse().to_cols_array());
+            mesh.material.set_uniform("projection_matrix", projection_matrix);
+            mesh.material.set_uniform("camera_inverse_matrix", camera_inverse_matrix);
+
+            self.render(mesh);
         }
     }
 

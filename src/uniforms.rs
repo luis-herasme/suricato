@@ -1,3 +1,5 @@
+use glam::{Mat2, Mat3, Mat4};
+
 use crate::{
     texture::Texture,
     transform::{Transform2D, Transform3D},
@@ -153,5 +155,24 @@ impl From<&Transform3D> for Uniform {
 impl From<&Transform2D> for Uniform {
     fn from(value: &Transform2D) -> Uniform {
         Uniform::Mat3(value.to_array())
+    }
+}
+
+// Matrix
+impl From<&Mat2> for Uniform {
+    fn from(value: &Mat2) -> Uniform {
+        Uniform::Mat2(value.to_cols_array())
+    }
+}
+
+impl From<&Mat3> for Uniform {
+    fn from(value: &Mat3) -> Uniform {
+        Uniform::Mat3(value.to_cols_array())
+    }
+}
+
+impl From<&Mat4> for Uniform {
+    fn from(value: &Mat4) -> Uniform {
+        Uniform::Mat4(value.to_cols_array())
     }
 }
