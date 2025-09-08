@@ -1,3 +1,4 @@
+use glam::Vec3;
 use web_sys::WebGl2RenderingContext as GL;
 
 use crate::{
@@ -370,6 +371,12 @@ impl From<Vec<[[f32; 3]; 3]>> for Data {
 impl From<Vec<[[f32; 4]; 4]>> for Data {
     fn from(value: Vec<[[f32; 4]; 4]>) -> Self {
         Data::Mat4(value)
+    }
+}
+
+impl From<Vec<Vec3>> for Data {
+    fn from(value: Vec<Vec3>) -> Self {
+        Data::Vec3(value.into_iter().map(|v| v.to_array()).collect())
     }
 }
 

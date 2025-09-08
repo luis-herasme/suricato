@@ -1,3 +1,4 @@
+pub mod animation;
 pub mod buffer_gpu;
 pub mod camera;
 pub mod geometry;
