@@ -1,16 +1,8 @@
 use glam::Quat;
 use gltf::Gltf;
 use suricato::{
-    buffer_gpu::BufferUsage,
-    geometry::Geometry,
-    index_buffer::IndexBuffer,
-    material::Material,
-    mesh::Mesh,
-    renderer::Renderer,
-    transform::Transform3D,
-    uniforms::Uniform,
-    utils::*,
-    vertex_buffer::{Data, InterleavedVertexBuffer, VertexData},
+    buffer_gpu::BufferUsage, geometry::Geometry, index_buffer::IndexBuffer, material::Material, mesh::Mesh, renderer::Renderer,
+    transform::Transform3D, uniforms::Uniform, utils::*, vertex_buffer::VertexBuffer,
 };
 use wasm_bindgen_futures::spawn_local;
 
@@ -76,20 +68,6 @@ async fn main_async() {
     let normals: Vec<[f32; 3]> = reader.read_normals().unwrap().collect();
     let indices: Vec<u32> = reader.read_indices().unwrap().into_u32().collect();
 
-    let positions = VertexData {
-        name:      String::from("position"),
-        data:      Data::Vec3(positions),
-        divisor:   0,
-        normalize: false,
-    };
-
-    let normals = VertexData {
-        name:      String::from("normal"),
-        data:      Data::Vec3(normals),
-        divisor:   0,
-        normalize: false,
-    };
-
     let mut renderer = Renderer::new();
     let material = Material::new(VERTEX_SHADER_SOURCE, FRAGMENT_SHADER_SOURCE);
     let index_buffer = IndexBuffer::from_u32(BufferUsage::StaticDraw, indices);
@@ -98,8 +76,8 @@ async fn main_async() {
         vertex_count:               0,
         instance_count:             None,
         indices:                    Some(index_buffer),
-        vertex_buffers:             vec![],
-        interleaved_vertex_buffers: vec![InterleavedVertexBuffer::new(BufferUsage::StaticDraw, vec![positions, normals])],
+        vertex_buffers:             vec![VertexBuffer::new("position", positions), VertexBuffer::new("normal", normals)],
+        interleaved_vertex_buffers: vec![],
     };
 
     let mut mesh = Mesh::new(geometry, material);
